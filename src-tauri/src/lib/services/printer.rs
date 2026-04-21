@@ -7,11 +7,13 @@ use std::time::Duration;
 use std::fs::OpenOptions;
 use log::{info, error, warn};
 use rusb::{self, DeviceHandle, UsbContext};
+use encoding_rs::GBK;
 
 #[cfg(windows)]
 use crate::lib::services::printer_bitmap::print_receipt_bitmap;
 
 pub const ESC: u8 = 0x1B;
+pub const FS: u8 = 0x1C;
 pub const GS: u8 = 0x1D;
 const LF: u8 = 0x0A;
 const DEBUG_LOG_PATH: &str = "/Users/mrzat/Desktop/billiard-manager/.cursor/debug-eb248b.log";
@@ -32,7 +34,12 @@ fn debug_log(run_id: &str, hypothesis_id: &str, location: &str, message: &str, d
 }
 
 fn esc_pos_init() -> Vec<u8> {
-    vec![ESC, b'@']
+    let mut buf = vec![ESC, b'@'];
+    // 进入中文模式: FS &
+    buf.extend_from_slice(&[FS, b'&']);
+    // 设置汉字字符集为 GB18030 (可选，增强兼容性)
+    // ESC R 选择国际字符集，但不影响中文模式
+    buf
 }
 
 fn esc_pos_align_center() -> Vec<u8> {
@@ -57,14 +64,17 @@ fn esc_pos_bold_off() -> Vec<u8> {
 }
 
 fn esc_pos_text(text: &str) -> Vec<u8> {
-    let mut bytes = text.as_bytes().to_vec();
-    bytes.push(LF);
-    bytes
+    // 将 UTF-8 编码的中文转为 GBK 编码，热敏打印机只认 GBK
+    let (bytes, _, _) = GBK.encode(text);
+    let mut result = bytes.to_vec();
+    result.push(LF);
+    result
 }
 
 #[allow(dead_code)]
 fn esc_pos_text_no_lf(text: &str) -> Vec<u8> {
-    text.as_bytes().to_vec()
+    let (bytes, _, _) = GBK.encode(text);
+    bytes.to_vec()
 }
 
 fn esc_pos_feed(n: u8) -> Vec<u8> {
@@ -77,30 +87,61 @@ fn esc_pos_cut() -> Vec<u8> {
 
 fn esc_pos_divider(width: i32) -> Vec<u8> {
     let line = "=".repeat(width as usize / 2);
-    let mut bytes = line.as_bytes().to_vec();
-    bytes.push(LF);
-    bytes
+    let (bytes, _, _) = GBK.encode(&line);
+    let mut result = bytes.to_vec();
+    result.push(LF);
+    result
 }
 
 fn esc_pos_left_right(left: &str, right: &str, width: i32) -> Vec<u8> {
-    let max_len = (width as usize / 2).saturating_sub(2);
-    let left_display = if left.len() > max_len {
-        format!("{}..", &left[..(max_len.saturating_sub(2))])
+    // GBK编码下中文字符占2字节，ASCII占1字节
+    // 用字符数近似计算显示宽度（中文2列宽，ASCII 1列宽）
+    let display_width = |s: &str| -> usize {
+        s.chars().map(|c| if c.is_ascii() { 1 } else { 2 }).sum()
+    };
+    let max_display = (width as usize / 2).saturating_sub(2);
+
+    let left_display = if display_width(left) > max_display {
+        // 截断，保留前半部分
+        let mut s = String::new();
+        let mut w = 0;
+        for c in left.chars() {
+            let cw = if c.is_ascii() { 1 } else { 2 };
+            if w + cw + 2 > max_display { break; }
+            s.push(c);
+            w += cw;
+        }
+        s.push_str("..");
+        s
     } else {
         left.to_string()
     };
-    let right_display = if right.len() > max_len {
-        format!("..{}", &right[right.len().saturating_sub(max_len.saturating_sub(2))..])
+
+    let right_display = if display_width(right) > max_display {
+        // 截断，保留后半部分
+        let mut s = String::new();
+        let mut w = 0;
+        for c in right.chars().rev() {
+            let cw = if c.is_ascii() { 1 } else { 2 };
+            if w + cw + 2 > max_display { break; }
+            s.push(c);
+            w += cw;
+        }
+        format!("..{}", s.chars().rev().collect::<String>())
     } else {
         right.to_string()
     };
-    let padding = (width as usize / 2).saturating_sub(left_display.len() + right_display.len());
+
+    let left_w = display_width(&left_display);
+    let right_w = display_width(&right_display);
+    let padding = (width as usize / 2).saturating_sub(left_w + right_w);
     let mut line = left_display;
     line.push_str(&" ".repeat(padding));
     line.push_str(&right_display);
-    let mut bytes = line.as_bytes().to_vec();
-    bytes.push(LF);
-    bytes
+    let (bytes, _, _) = GBK.encode(&line);
+    let mut result = bytes.to_vec();
+    result.push(LF);
+    result
 }
 
 fn generate_receipt_bytes(req: &PrintReceiptRequest, paper_width: i32) -> Vec<u8> {
