@@ -8,8 +8,15 @@ use std::fs::OpenOptions;
 use log::{info, error, warn};
 use rusb::{self, DeviceHandle, UsbContext};
 
-const ESC: u8 = 0x1B;
-const GS: u8 = 0x1D;
+#[cfg(windows)]
+use image::{GrayImage, Luma};
+#[cfg(windows)]
+use imageproc::drawing::draw_text_mut;
+#[cfg(windows)]
+use rusttype::{Font, Scale};
+
+pub const ESC: u8 = 0x1B;
+pub const GS: u8 = 0x1D;
 const LF: u8 = 0x0A;
 const DEBUG_LOG_PATH: &str = "/Users/mrzat/Desktop/billiard-manager/.cursor/debug-eb248b.log";
 
@@ -922,7 +929,16 @@ pub fn print_receipt(req: PrintReceiptRequest) -> PrintResult {
                 _ => Err("串口打印机需要设置串口号和波特率".to_string()),
             }
         }
-        "usb" => send_to_usb_printer(&data),
+        "usb" => {
+            #[cfg(windows)]
+            {
+                print_receipt_bitmap(&req, &printer.name)
+            }
+            #[cfg(not(windows))]
+            {
+                send_to_usb_printer(&data)
+            }
+        }
         other => Err(format!("不支持的连接类型: {}", other)),
     };
 
@@ -987,7 +1003,33 @@ pub fn test_printer(id: i64) -> PrintResult {
                 _ => Err("串口打印机需要设置串口号和波特率".to_string()),
             }
         }
-        "usb" => send_to_usb_printer(&buf),
+        "usb" => {
+            #[cfg(windows)]
+            {
+                let test_req = PrintReceiptRequest {
+                    printer_id: Some(printer.id),
+                    shop_name: "打印机测试".to_string(),
+                    order_no: Some("TEST-001".to_string()),
+                    table_name: Some("1号桌".to_string()),
+                    member_name: None,
+                    start_time: Some("2025-01-01 12:00".to_string()),
+                    end_time: Some("2025-01-01 14:00".to_string()),
+                    duration_minutes: Some(120),
+                    receipt_type: "normal".to_string(),
+                    items: None,
+                    total_amount: 100.0,
+                    discount_amount: None,
+                    deposit: None,
+                    final_amount: 100.0,
+                    payment_method: Some("现金".to_string()),
+                };
+                print_receipt_bitmap(&test_req, &printer.name)
+            }
+            #[cfg(not(windows))]
+            {
+                send_to_usb_printer(&buf)
+            }
+        }
         other => Err(format!("不支持的连接类型: {}", other)),
     };
 

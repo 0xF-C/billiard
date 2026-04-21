@@ -33,6 +33,12 @@ thiserror = "2"
 dirs = "5"
 parking_lot = "0.12"
 rusb = "0.9"
+image = "0.25"
+imageproc = "0.25"
+ab_glyph = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winspool"] }
 
 [features]
 default = ["custom-protocol"]

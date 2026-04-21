@@ -17,6 +17,7 @@ mod user;
 mod hardware;
 mod backup;
 mod printer;
+mod printer_bitmap;
 
 pub use auth::*;
 pub use table::*;
