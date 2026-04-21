@@ -48,12 +48,12 @@ fn get_font() -> Result<FontRef<'static>, String> {
     {
         let lock = FONT.lock().unwrap();
         if let Some(ref font) = *lock {
-            return Ok(font);
+            return Ok(*font);
         }
     }
     init_font()?;
     let lock = FONT.lock().unwrap();
-    lock.as_ref().ok_or_else(|| "Font not loaded".to_string()).map(|f| f)
+    lock.ok_or_else(|| "Font not loaded".to_string()).map(|f| *f)
 }
 
 #[cfg(windows)]
