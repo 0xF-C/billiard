@@ -170,6 +170,7 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
 fn bitmap_to_esc_pos(img: &GrayImage) -> Vec<u8> {
     let width = img.width() as u16;
     let height = img.height() as u16;
+    let row_bytes = (width + 7) / 8;
     
     let esc = 0x1B as u8;
     let gs = 0x1D as u8;
@@ -185,23 +186,16 @@ fn bitmap_to_esc_pos(img: &GrayImage) -> Vec<u8> {
     data.push((height >> 8) as u8);
     
     for y in 0..img.height() {
-        let mut byte = 0u8;
-        let mut bit = 7i8;
+        let mut row_data = vec![0u8; row_bytes as usize];
         for x in 0..img.width() {
             let pixel = img.get_pixel(x, y)[0];
             if pixel < 128 {
-                byte |= 1 << bit;
-            }
-            bit -= 1;
-            if bit < 0 {
-                data.push(byte);
-                byte = 0;
-                bit = 7;
+                let byte_idx = (x / 8) as usize;
+                let bit_idx = 7 - (x % 8);
+                row_data[byte_idx] |= 1 << bit_idx;
             }
         }
-        if bit != 7 {
-            data.push(byte);
-        }
+        data.extend_from_slice(&row_data);
     }
     
     data.extend_from_slice(&[gs, b'V', 0x00]);
