@@ -35,23 +35,19 @@ fn init_font() -> Result<FontRef<'static>, String> {
                 info!("Loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
                 *lock = Some((leaked.to_vec(), font));
-                return Ok(font);
             }
         }
     }
     
-    Err("未找到中文字体。请确保系统安装了 simhei.ttf 或 msyh.ttc。".to_string())
+    init_font()
 }
 
 #[cfg(windows)]
 fn get_font() -> Result<FontRef<'static>, String> {
-    {
-        let lock = FONT.lock().unwrap();
-        if let Some((_, ref font)) = *lock {
-            return Ok(*font);
-        }
-    }
-    init_font()
+    let lock = FONT.lock().unwrap();
+    lock.as_ref()
+        .map(|(_, f)| *f)
+        .ok_or_else(|| "Font not loaded".to_string())
 }
 
 #[cfg(windows)]
