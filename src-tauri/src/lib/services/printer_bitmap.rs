@@ -28,14 +28,20 @@ fn init_font() -> Result<FontRef<'static>, String> {
     ];
     
     for path in &paths {
+        info!("Trying to load font from: {}", path);
         if let Ok(data) = std::fs::read(path) {
+            info!("Read {} bytes from {}", data.len(), path);
             let leaked = Box::leak(data.into_boxed_slice());
             if let Ok(font) = FontRef::try_from_slice(leaked) {
-                info!("Loaded font from {}", path);
+                info!("Successfully loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
                 *lock = Some((leaked.to_vec(), font.clone()));
                 return Ok(font);
+            } else {
+                info!("FontRef::try_from_slice failed for {}", path);
             }
+        } else {
+            info!("Failed to read {}", path);
         }
     }
     
@@ -67,6 +73,7 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     let margin = 10u32;
     
     let font = get_font()?;
+    info!("Got font, rendering bitmap {}x{}", width, height);
     
     struct Line {
         text: String,
