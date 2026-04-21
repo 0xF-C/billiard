@@ -14,13 +14,13 @@ use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
 #[cfg(windows)]
-static FONT: Lazy<Mutex<Option<FontRef<'static>>>> = Lazy::new(|| Mutex::new(None));
+static FONT: Lazy<Mutex<Option<(Vec<u8>, FontRef<'static>)>>> = Lazy::new(|| Mutex::new(None));
 
 #[cfg(windows)]
 const BITMAP_WIDTH: u32 = 384;
 
 #[cfg(windows)]
-fn init_font() -> Result<(), String> {
+fn init_font() -> Result<FontRef<'static>, String> {
     let paths = [
         "C:\\Windows\\Fonts\\simhei.ttf",
         "C:\\Windows\\Fonts\\msyh.ttc",
@@ -34,8 +34,8 @@ fn init_font() -> Result<(), String> {
             if let Ok(font) = FontRef::try_from_slice(leaked) {
                 info!("Loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
-                *lock = Some(font);
-                return Ok(());
+                *lock = Some((leaked.to_vec(), font));
+                return Ok(font);
             }
         }
     }
@@ -47,13 +47,11 @@ fn init_font() -> Result<(), String> {
 fn get_font() -> Result<FontRef<'static>, String> {
     {
         let lock = FONT.lock().unwrap();
-        if let Some(ref font) = *lock {
+        if let Some((_, ref font)) = *lock {
             return Ok(*font);
         }
     }
-    init_font()?;
-    let lock = FONT.lock().unwrap();
-    lock.ok_or_else(|| "Font not loaded".to_string()).map(|f| *f)
+    init_font()
 }
 
 #[cfg(windows)]
