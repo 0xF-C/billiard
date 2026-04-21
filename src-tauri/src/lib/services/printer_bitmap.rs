@@ -1,14 +1,13 @@
 #[cfg(windows)]
 use crate::lib::models::PrintReceiptRequest;
 #[cfg(windows)]
-use log::info;
-
-#[cfg(windows)]
 use ab_glyph::{FontRef, PxScale};
 #[cfg(windows)]
 use image::{GrayImage, Luma};
 #[cfg(windows)]
 use imageproc::drawing::draw_text_mut;
+#[cfg(windows)]
+use log::info;
 
 #[cfg(windows)]
 const BITMAP_WIDTH: u32 = 384;
@@ -27,7 +26,7 @@ fn load_font() -> Result<FontRef<'static>, String> {
             Ok(d) => d,
             Err(_) => continue,
         };
-        if let Ok(font) = FontRef::try_from_slice(&data) {
+        if let Ok(font) = FontRef::try_from_vec(data) {
             info!("Loaded font from {}", path);
             return Ok(font);
         }
@@ -51,7 +50,6 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     
     let font = load_font()?;
     
-    #[derive(Clone)]
     struct Line {
         text: String,
         x: u32,
@@ -66,16 +64,24 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     lines.push(Line { text: now, x: 0, is_divider: false, align_center: true });
     lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
     
-    let mut add_line = |label: &str, value: &str| {
-        lines.push(Line { text: format!("{} {}", label, value), x: margin, is_divider: false, align_center: false });
-    };
-    
-    if let Some(ref v) = req.order_no { add_line("订单号:", v); }
-    if let Some(ref v) = req.table_name { add_line("球桌:", v); }
-    if let Some(ref v) = req.member_name { add_line("会员:", v); }
-    if let Some(ref v) = req.start_time { add_line("开始时间:", v); }
-    if let Some(ref v) = req.end_time { add_line("结束时间:", v); }
-    if let Some(v) = req.duration_minutes { add_line("时长:", &format!("{}分钟", v)); }
+    if let Some(ref v) = req.order_no {
+        lines.push(Line { text: format!("订单号: {}", v), x: margin, is_divider: false, align_center: false });
+    }
+    if let Some(ref v) = req.table_name {
+        lines.push(Line { text: format!("球桌: {}", v), x: margin, is_divider: false, align_center: false });
+    }
+    if let Some(ref v) = req.member_name {
+        lines.push(Line { text: format!("会员: {}", v), x: margin, is_divider: false, align_center: false });
+    }
+    if let Some(ref v) = req.start_time {
+        lines.push(Line { text: format!("开始时间: {}", v), x: margin, is_divider: false, align_center: false });
+    }
+    if let Some(ref v) = req.end_time {
+        lines.push(Line { text: format!("结束时间: {}", v), x: margin, is_divider: false, align_center: false });
+    }
+    if let Some(v) = req.duration_minutes {
+        lines.push(Line { text: format!("时长: {}分钟", v), x: margin, is_divider: false, align_center: false });
+    }
     
     lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
     
@@ -91,24 +97,24 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
         }
     }
     
-    add_line("合计:", &format!("¥{:.2}", req.total_amount));
+    lines.push(Line { text: format!("合计: ¥{:.2}", req.total_amount), x: margin, is_divider: false, align_center: false });
     
     if let Some(discount) = req.discount_amount {
         if discount > 0.0 {
-            add_line("优惠:", &format!("-¥{:.2}", discount));
+            lines.push(Line { text: format!("优惠: -¥{:.2}", discount), x: margin, is_divider: false, align_center: false });
         }
     }
     if let Some(deposit) = req.deposit {
         if deposit > 0.0 {
-            add_line("押金:", &format!("-¥{:.2}", deposit));
+            lines.push(Line { text: format!("押金: -¥{:.2}", deposit), x: margin, is_divider: false, align_center: false });
         }
     }
     
     lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
-    add_line("实收:", &format!("¥{:.2}", req.final_amount));
+    lines.push(Line { text: format!("实收: ¥{:.2}", req.final_amount), x: margin, is_divider: false, align_center: false });
     
     if let Some(ref method) = req.payment_method {
-        add_line("支付方式:", method);
+        lines.push(Line { text: format!("支付方式: {}", method), x: margin, is_divider: false, align_center: false });
     }
     
     lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
@@ -199,6 +205,8 @@ pub fn print_receipt_bitmap(req: &PrintReceiptRequest, printer_name: &str) -> Re
         .encode_wide()
         .chain(std::iter::once(0))
         .collect();
+    let mut printer_name_buf = printer_name_wide;
+    let printer_name_ptr = printer_name_buf.as_mut_ptr();
     
     use winapi::shared::minwindef::{BOOL, DWORD, LPVOID};
     use winapi::shared::ntdef::HANDLE;
@@ -209,7 +217,7 @@ pub fn print_receipt_bitmap(req: &PrintReceiptRequest, printer_name: &str) -> Re
     
     unsafe {
         let mut hprinter: HANDLE = std::ptr::null_mut();
-        let ok: BOOL = OpenPrinterW(printer_name_wide.as_ptr(), &mut hprinter, std::ptr::null_mut());
+        let ok: BOOL = OpenPrinterW(printer_name_ptr, &mut hprinter, std::ptr::null_mut());
         if ok == 0 {
             return Err(format!("OpenPrinter 失败: '{}'", printer_name));
         }
@@ -223,13 +231,16 @@ pub fn print_receipt_bitmap(req: &PrintReceiptRequest, printer_name: &str) -> Re
             .chain(std::iter::once(0))
             .collect();
         
-        let mut doc_info = DOC_INFO_1W {
-            pDocName: doc_name.as_ptr(),
+        let mut doc_name_buf = doc_name;
+        let mut data_type_buf = data_type;
+        
+        let doc_info = DOC_INFO_1W {
+            pDocName: doc_name_buf.as_mut_ptr(),
             pOutputFile: std::ptr::null_mut(),
-            pDatatype: data_type.as_ptr(),
+            pDatatype: data_type_buf.as_mut_ptr(),
         };
         
-        let job_id: DWORD = StartDocPrinterW(hprinter, 1, &mut doc_info);
+        let job_id: DWORD = StartDocPrinterW(hprinter, 1, std::ptr::addr_of!(doc_info) as *mut u8);
         if job_id == 0 {
             ClosePrinter(hprinter);
             return Err("StartDocPrinter 失败".to_string());
