@@ -1,5 +1,6 @@
+#[cfg(windows)]
 use crate::lib::models::PrintReceiptRequest;
-use crate::lib::services::printer::ESC;
+#[cfg(windows)]
 use log::info;
 
 #[cfg(windows)]
@@ -146,9 +147,10 @@ fn bitmap_to_esc_pos(img: &GrayImage) -> Vec<u8> {
     let width = img.width() as u16;
     let height = img.height() as u16;
     
-    let mut data = vec![ESC, b'@'];
-    
+    let esc = 0x1B as u8;
     let gs = 0x1D as u8;
+    let mut data = vec![esc, b'@'];
+    
     data.push(gs);
     data.push(b'v');
     data.push(b'0');

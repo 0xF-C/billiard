@@ -927,13 +927,9 @@ pub fn print_receipt(req: PrintReceiptRequest) -> PrintResult {
         }
         "usb" => {
             #[cfg(windows)]
-            {
-                print_receipt_bitmap(&req, &printer.name)
-            }
+            { print_receipt_bitmap(&req, &printer.name) }
             #[cfg(not(windows))]
-            {
-                send_to_usb_printer(&data)
-            }
+            { send_to_usb_printer(&data) }
         }
         other => Err(format!("不支持的连接类型: {}", other)),
     };
@@ -1022,9 +1018,7 @@ pub fn test_printer(id: i64) -> PrintResult {
                 print_receipt_bitmap(&test_req, &printer.name)
             }
             #[cfg(not(windows))]
-            {
-                send_to_usb_printer(&buf)
-            }
+            send_to_usb_printer(&buf)
         }
         other => Err(format!("不支持的连接类型: {}", other)),
     };
