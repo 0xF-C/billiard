@@ -8,7 +8,7 @@
       </el-button>
     </div>
 
-    <!-- 统计概览 -->
+    <!-- {{ t('statsOverview') }} -->
     <div class="stats-overview">
       <el-card class="stat-card">
         <div class="stat-label">{{ t('currentShift') }}</div>
@@ -45,7 +45,7 @@
       </el-card>
     </div>
 
-    <!-- 班次记录 -->
+    <!-- {{ t('shiftRecordSection') }} -->
     <div class="section">
       <h3 class="section-title">{{ t('shiftRecords') }}</h3>
       <el-table :data="shiftRecords" v-loading="loading">
@@ -77,7 +77,7 @@
       </el-table>
     </div>
 
-    <!-- 交班对话框 -->
+    <!-- {{ t('shiftDialogTitle') }} -->
     <el-dialog v-model="showShiftDialog" :title="t('shiftChangeConfirm')" width="600px">
       <div class="shift-summary">
         <h4>{{ t('shiftSummary') }}</h4>
