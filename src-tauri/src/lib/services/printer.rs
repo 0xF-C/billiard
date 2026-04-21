@@ -224,6 +224,7 @@ fn generate_receipt_bytes(req: &PrintReceiptRequest, paper_width: i32) -> Vec<u8
     buf
 }
 
+#[allow(dead_code)]
 fn send_to_network_printer(ip: &str, port: i32, data: &[u8]) -> Result<(), String> {
     let addr = format!("{}:{}", ip, port);
     let mut stream = TcpStream::connect(&addr)
@@ -237,6 +238,7 @@ fn send_to_network_printer(ip: &str, port: i32, data: &[u8]) -> Result<(), Strin
     Ok(())
 }
 
+#[allow(dead_code)]
 fn send_to_serial_printer(_serial_port: &str, _baud_rate: i32, _data: &[u8]) -> Result<(), String> {
     Err("串口打印需要 serialport crate，暂未实现".to_string())
 }
@@ -953,7 +955,7 @@ pub fn print_receipt(req: PrintReceiptRequest) -> PrintResult {
         return PrintResult { success: false, message: format!("打印机 '{}' 已禁用", printer.name) };
     }
 
-    let data = generate_receipt_bytes(&req, printer.paper_width);
+    let _data = generate_receipt_bytes(&req, printer.paper_width);
 
     let result = match printer.connection_type.as_str() {
         "network" => {
