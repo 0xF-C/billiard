@@ -13,7 +13,15 @@ pub struct Settings {
     pub member_day: MemberDay,
     #[serde(rename = "autoClose")]
     pub auto_close: AutoClose,
+    #[serde(rename = "autoPrintOnClose", default = "default_true")]
+    pub auto_print_on_close: Option<bool>,
+    #[serde(rename = "shopName", default)]
+    pub shop_name: Option<String>,
+    #[serde(rename = "printFooter", default)]
+    pub print_footer: Option<String>,
 }
+
+fn default_true() -> Option<bool> { Some(true) }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct AutoClose {
@@ -91,6 +99,9 @@ fn default_settings() -> Settings {
         packages: vec![],
         member_day: MemberDay { enabled: false, dates: "".to_string(), discount: 0 },
         auto_close: AutoClose::default(),
+        auto_print_on_close: Some(true),
+        shop_name: Some("台球厅".to_string()),
+        print_footer: Some("欢迎下次光临".to_string()),
     }
 }
 

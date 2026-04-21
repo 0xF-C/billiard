@@ -3,6 +3,7 @@ use crate::lib::models::*;
 use crate::lib::services::settings::load_settings;
 use crate::lib::utils::{calc_bill_minutes, validate_open_table_request, validate_close_table_request, today_local};
 use crate::lib::services::settings::get_member_day_discount;
+use crate::lib::services::printer::print_receipt;
 use chrono::{DateTime, Utc};
 use rusqlite::params;
 use rusqlite::Connection;
@@ -217,6 +218,11 @@ pub fn close_order(order_id: i64, req: CloseTableRequest) -> Result<Order, Strin
         }
     } else {
         tx.rollback().ok();
+    }
+    
+    // 结账成功后自动打印小票
+    if let Ok(ref order) = result {
+        auto_print_receipt(order);
     }
     
     result
@@ -666,6 +672,51 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
         }
     }
     results
+}
+
+/// 结账成功后自动打印小票
+fn auto_print_receipt(order: &Order) {
+    // 从设置中读取是否启用自动打印
+    let settings = load_settings();
+    let auto_print = settings.auto_print_on_close.unwrap_or(true);
+    if !auto_print {
+        info!("auto_print_on_close disabled, skipping print");
+        return;
+    }
+    
+    let shop_name = settings.shop_name.clone().unwrap_or_else(|| "台球厅".to_string());
+    let payment_method_label = match order.payment_method.as_deref() {
+        Some("cash") => "现金",
+        Some("wechat") => "微信",
+        Some("alipay") => "支付宝",
+        Some("member") => "会员余额",
+        Some("auto") => "自动结账",
+        Some(other) => other,
+        None => "其他",
+    };
+    
+    let print_req = PrintReceiptRequest {
+        printer_id: None, // 使用默认打印机
+        shop_name,
+        order_no: Some(format!("{}", order.id)),
+        table_name: order.table_name.clone(),
+        member_name: if order.member_name == "散客" { None } else { Some(order.member_name.clone()) },
+        start_time: order.start_time.clone().map(|t| t.replace('T', " ").chars().take(16).collect()),
+        end_time: order.end_time.clone().map(|t| t.replace('T', " ").chars().take(16).collect()),
+        duration_minutes: order.duration_minutes,
+        items: None,
+        total_amount: order.total_amount,
+        discount_amount: if order.discount_amount > 0.0 { Some(order.discount_amount) } else { None },
+        deposit: if order.deposit > 0.0 { Some(order.deposit) } else { None },
+        final_amount: order.final_amount,
+        payment_method: Some(payment_method_label.to_string()),
+        receipt_type: "normal".to_string(),
+    };
+    
+    match print_receipt(print_req) {
+        result if result.success => info!("Auto-print receipt for order {} succeeded", order.id),
+        result => warn!("Auto-print receipt for order {} failed: {}", order.id, result.message),
+    }
 }
 
 #[derive(Debug, serde::Serialize)]
