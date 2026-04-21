@@ -26,7 +26,7 @@ fn load_font() -> Result<FontRef<'static>, String> {
             Ok(d) => d,
             Err(_) => continue,
         };
-        if let Ok(font) = FontRef::try_from_vec(data) {
+        if let Ok(font) = FontRef::try_from_slice(&data) {
             info!("Loaded font from {}", path);
             return Ok(font);
         }
