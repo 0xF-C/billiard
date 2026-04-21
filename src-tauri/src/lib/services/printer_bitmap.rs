@@ -8,12 +8,19 @@ use image::{GrayImage, Luma};
 use imageproc::drawing::draw_text_mut;
 #[cfg(windows)]
 use log::info;
+#[cfg(windows)]
+use once_cell::sync::Lazy;
+#[cfg(windows)]
+use std::sync::Mutex;
+
+#[cfg(windows)]
+static FONT: Lazy<Mutex<Option<FontRef<'static>>>> = Lazy::new(|| Mutex::new(None));
 
 #[cfg(windows)]
 const BITMAP_WIDTH: u32 = 384;
 
 #[cfg(windows)]
-fn load_font() -> Result<FontRef<'static>, String> {
+fn init_font() -> Result<(), String> {
     let paths = [
         "C:\\Windows\\Fonts\\simhei.ttf",
         "C:\\Windows\\Fonts\\msyh.ttc",
@@ -23,14 +30,29 @@ fn load_font() -> Result<FontRef<'static>, String> {
     
     for path in &paths {
         if let Ok(data) = std::fs::read(path) {
-            if let Ok(font) = FontRef::try_from_slice(&data.clone()) {
+            if let Ok(font) = FontRef::try_from_slice(&data) {
                 info!("Loaded font from {}", path);
-                return Ok(font);
+                let mut lock = FONT.lock().unwrap();
+                *lock = Some(font);
+                return Ok(());
             }
         }
     }
     
     Err("未找到中文字体。请确保系统安装了 simhei.ttf 或 msyh.ttc。".to_string())
+}
+
+#[cfg(windows)]
+fn get_font() -> Result<FontRef<'static>, String> {
+    {
+        let lock = FONT.lock().unwrap();
+        if let Some(ref font) = *lock {
+            return Ok(font.clone());
+        }
+    }
+    init_font()?;
+    let lock = FONT.lock().unwrap();
+    lock.clone().ok_or_else(|| "Font not loaded".to_string())
 }
 
 #[cfg(windows)]
@@ -46,7 +68,7 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     let line_height = 34u32;
     let margin = 10u32;
     
-    let font = load_font()?;
+    let font = get_font()?;
     
     struct Line {
         text: String,
