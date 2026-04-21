@@ -8,7 +8,7 @@
       </el-button>
     </div>
 
-    <!-- 挂单列表 -->
+    <!-- Pending Orders List -->
     <div class="orders-list">
       <el-card v-for="order in pendingOrders" :key="order.id" class="order-card" :class="{ 'expired': isExpired(order) }">
         <div class="order-header">
@@ -52,7 +52,7 @@
       <el-empty v-if="pendingOrders.length === 0" :description="t('noPendingOrders')" />
     </div>
 
-    <!-- 创建挂单对话框 -->
+    <!-- Create Pending Order Dialog -->
     <el-dialog v-model="showCreateDlg" :title="t('createPendingOrder')" width="500px">
       <el-form :model="form" label-width="100px">
         <el-form-item :label="t('customerName')">
@@ -79,7 +79,7 @@
       </template>
     </el-dialog>
 
-    <!-- 挂单详情对话框 -->
+    <!-- Pending Order Detail Dialog -->
     <el-dialog v-model="detailDlg" :title="t('orderDetails')" width="480px">
       <div v-if="selectedOrder" class="detail-content">
         <div class="detail-row">

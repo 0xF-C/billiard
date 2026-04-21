@@ -19,7 +19,7 @@
       {{ formatDisplayDate(selectedDate) }}
     </div>
 
-    <!-- 核心指标 -->
+    <!-- Core Metrics -->
     <div class="metrics-grid">
       <div class="metric-card highlight">
         <div class="metric-label">{{ t('totalRevenue') }}</div>
@@ -70,9 +70,9 @@
       </div>
     </div>
 
-    <!-- 详细数据 -->
+    <!-- Detailed Data -->
     <div class="detail-grid">
-      <!-- 收款方式 -->
+      <!-- Payment Methods -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('paymentMethods') }}</h3>
@@ -88,7 +88,7 @@
         </div>
       </div>
 
-      <!-- 时段分布 -->
+      <!-- Time Distribution -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('hourlyDistribution') }}</h3>
@@ -104,7 +104,7 @@
         </div>
       </div>
 
-      <!-- 桌台使用 -->
+      <!-- Table Usage -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('tableUsage') }}</h3>
@@ -124,7 +124,7 @@
         </el-table>
       </div>
 
-      <!-- 支出明细 -->
+      <!-- Expense Details -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('expenses') }}</h3>
@@ -147,7 +147,7 @@
       </div>
     </div>
 
-    <!-- 订单明细 -->
+    <!-- Order Details -->
     <div class="orders-section">
       <div class="section-header">
         <h3>{{ t('orderDetails') }}</h3>

@@ -124,7 +124,7 @@
       </el-table>
     </div>
 
-    <!-- 配置弹窗 -->
+    <!-- Config Dialog -->
     <el-dialog v-model="showConfig" :title="t('configPayment')" width="500px">
       <el-form label-width="120px">
         <el-divider content-position="left">{{ t('wechat') }}</el-divider>

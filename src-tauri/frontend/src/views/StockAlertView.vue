@@ -116,7 +116,7 @@
       </el-table>
     </div>
 
-    <!-- 预警配置弹窗 -->
+    <!-- Alert Config Dialog -->
     <el-dialog v-model="showConfig" :title="t('alertConfig')" width="500px">
       <el-form label-width="120px">
         <el-form-item :label="t('lowStockThreshold')">

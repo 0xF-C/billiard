@@ -8,7 +8,7 @@
       </el-button>
     </div>
 
-    <!-- 套餐列表 -->
+    <!-- Package List -->
     <div class="section">
       <h3 class="section-title">{{ t('packageSettings') }}</h3>
       <div class="package-grid" v-if="packages.length > 0">
@@ -57,7 +57,7 @@
       </div>
     </div>
 
-    <!-- 特殊时段价格 -->
+    <!-- Special Time Price -->
     <div class="section">
       <h3 class="section-title">{{ t('specialRates') }}</h3>
       <div class="special-rates">
@@ -143,7 +143,7 @@
       <span>{{ t('noData') }}</span>
     </div>
 
-    <!-- 添加套餐弹窗 -->
+    <!-- Add Package Dialog -->
     <el-dialog v-model="showPackageDlg" :title="t('addPackage')" width="500px" class="package-dialog">
       <div class="package-form">
         <div class="form-item">

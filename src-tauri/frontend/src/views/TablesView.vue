@@ -71,7 +71,7 @@
       </div>
     </div>
 
-    <!-- 开台弹窗 - 大尺寸完整版 -->
+    <!-- Open Table Dialog - Full Size -->
     <el-dialog
       v-model="openDlg"
       :title="openDlgTitle"
@@ -80,7 +80,7 @@
       class="open-table-dialog"
     >
       <div class="open-form" v-if="sel">
-        <!-- 球台信息卡片 -->
+        <!-- Table Info Card -->
         <div class="table-hero">
           <div class="hero-icon" :class="sel.is_private ? 'private' : 'hall'">
             <el-icon><component :is="sel.is_private ? 'House' : 'Grid'" /></el-icon>
@@ -94,7 +94,7 @@
           </el-tag>
         </div>
 
-        <!-- 客户类型切换 -->
+        <!-- Customer Type Switch -->
         <div class="customer-type-section">
           <div class="section-title">{{ t('member') }}/{{ t('walkIn') }}</div>
           <div class="customer-tabs">
@@ -109,7 +109,7 @@
           </div>
         </div>
 
-        <!-- 会员搜索区域 -->
+        <!-- Member Search Area -->
         <div v-if="customerType === 'member'" class="member-section">
           <div class="section-title">{{ t('searchMember') }}</div>
           <el-autocomplete
@@ -147,7 +147,7 @@
             </template>
           </el-autocomplete>
 
-          <!-- 选中会员卡片 -->
+          <!-- Selected Member Card -->
           <div v-if="selectedMember" class="selected-member-card">
             <div class="member-info-left">
               <el-avatar :size="48" style="background: var(--accent-success);">
@@ -173,7 +173,7 @@
           </div>
         </div>
 
-        <!-- 散客区域 -->
+        <!-- Walk-in Customer Area -->
         <div v-else class="walkin-section">
           <div class="section-title">{{ t('walkInInfo') }}</div>
           <div class="walkin-form">
@@ -222,7 +222,7 @@
           </div>
         </div>
 
-        <!-- 套餐选择 -->
+        <!-- Package Selection -->
         <div class="package-section">
           <div class="section-title">{{ t('selectPackage') }}</div>
           <div class="package-options">
@@ -250,7 +250,7 @@
           </div>
         </div>
 
-        <!-- 费用预览 -->
+        <!-- Cost Preview -->
         <div class="cost-preview">
           <div class="preview-title">{{ t('amount') }}</div>
           <div class="preview-content">
@@ -285,7 +285,7 @@
       </template>
     </el-dialog>
 
-    <!-- 结账弹窗 -->
+    <!-- Checkout Dialog -->
     <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">

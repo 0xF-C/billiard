@@ -47,7 +47,7 @@
       </div>
     </div>
 
-    <!-- 添加供应商弹窗 -->
+    <!-- Add Supplier Dialog -->
     <el-dialog v-model="showAdd" :title="t('addSupplier')" width="500px">
       <el-form :model="form" label-width="100px">
         <el-form-item :label="t('supplierName')">

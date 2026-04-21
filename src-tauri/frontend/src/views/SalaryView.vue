@@ -80,7 +80,7 @@
       </el-table>
     </div>
 
-    <!-- 详情弹窗 -->
+    <!-- Detail Dialog -->
     <el-dialog v-model="showDetail" :title="t('salaryDetail')" width="600px">
       <template v-if="selectedStaff">
         <el-descriptions :column="2" border>

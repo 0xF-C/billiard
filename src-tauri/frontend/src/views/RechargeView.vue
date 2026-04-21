@@ -5,7 +5,7 @@
     </div>
 
     <div class="main-grid">
-      <!-- 左侧：会员选择 -->
+      <!-- Left: Member Selection -->
       <div class="member-panel">
         <div class="panel-header">
           <h3>{{ t('selectMember') }}</h3>
@@ -48,7 +48,7 @@
         </div>
       </div>
 
-      <!-- 右侧：充值面板 -->
+      <!-- Right: Recharge Panel -->
       <div class="recharge-panel">
         <template v-if="selectedMember">
           <div class="member-card">
@@ -156,7 +156,7 @@
       </div>
     </div>
 
-    <!-- 充值记录 -->
+    <!-- Recharge Records -->
     <div class="records-section">
       <div class="section-header">
         <h3>{{ t('recentRecords') }}</h3>

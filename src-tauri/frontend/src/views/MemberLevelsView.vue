@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <!-- 编辑折扣弹窗 -->
+    <!-- Edit Discount Dialog -->
     <el-dialog v-model="editDlg" :title="t('edit') + ' - ' + (editTarget?.name || '')" width="360px">
       <div class="edit-discount-form" v-if="editTarget">
         <div class="discount-label">{{ t('discount') }}</div>

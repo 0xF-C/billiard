@@ -61,7 +61,7 @@
       </div>
     </div>
 
-    <!-- 打印设置弹窗 -->
+    <!-- Print Settings Dialog -->
     <el-dialog v-model="showPrinterDlg" :title="t('printerConfig')" width="800px" class="settings-dialog">
       <div class="dialog-content">
         <div class="printer-header">
@@ -124,7 +124,7 @@
       </template>
     </el-dialog>
 
-    <!-- 添加/编辑打印机弹窗 -->
+    <!-- Add/Edit Printer Dialog -->
     <el-dialog v-model="showPrinterForm" :title="editPrinterTarget ? t('editPrinter') : t('addPrinter')" width="500px" class="settings-dialog">
       <div class="dialog-content">
         <div class="form-item">
@@ -179,7 +179,7 @@
       </template>
     </el-dialog>
 
-    <!-- 用户管理弹窗 -->
+    <!-- User Management Dialog -->
     <el-dialog v-model="showUserDlg" :title="t('userPermission')" width="700px" class="settings-dialog">
       <div class="dialog-content">
         <div class="section-header">
@@ -210,7 +210,7 @@
       </template>
     </el-dialog>
 
-    <!-- 添加/编辑用户弹窗 -->
+    <!-- Add/Edit User Dialog -->
     <el-dialog v-model="showUserForm" :title="editUserTarget ? t('edit') : t('add')" width="400px" class="settings-dialog">
       <div class="dialog-content">
         <div class="form-item">
@@ -236,7 +236,7 @@
       </template>
     </el-dialog>
 
-    <!-- 备份恢复弹窗 -->
+    <!-- Backup/Restore Dialog -->
     <el-dialog v-model="showBackupDlg" :title="t('backupRestore')" width="480px" class="settings-dialog">
       <div class="dialog-content">
         <div class="backup-card" @click="doBackup">

@@ -55,7 +55,7 @@
       </div>
     </div>
 
-    <!-- 创建优惠券弹窗 -->
+    <!-- Create Coupon Dialog -->
     <el-dialog v-model="showAdd" :title="t('createCoupon')" width="500px">
       <el-form :model="form" label-width="100px">
         <el-form-item :label="t('couponName')">

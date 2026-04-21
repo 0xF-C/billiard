@@ -75,7 +75,7 @@
       </div>
     </div>
 
-    <!-- 添加预订弹窗 -->
+    <!-- Add Booking Dialog -->
     <el-dialog v-model="showAdd" :title="t('addBooking')" width="500px">
       <el-form :model="addForm" :rules="addRules" ref="addFormRef" label-width="100px">
         <el-form-item :label="t('table')" prop="tableId">
@@ -124,7 +124,7 @@
       </template>
     </el-dialog>
 
-    <!-- 预订详情弹窗 -->
+    <!-- Booking Detail Dialog -->
     <el-dialog v-model="showDetail" :title="t('bookingDetail')" width="450px">
       <el-descriptions :column="1" border v-if="selectedBooking">
         <el-descriptions-item :label="t('table')">{{ selectedBooking.tableName }}</el-descriptions-item>

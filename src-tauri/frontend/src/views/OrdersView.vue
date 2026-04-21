@@ -11,7 +11,7 @@
       </div>
     </div>
 
-    <!-- 进行中订单 -->
+    <!-- Active Orders -->
     <div v-if="curTab === 'active'" class="active-orders-grid">
       <div v-for="order in orders" :key="order.id" class="order-card active">
         <div class="order-header">
@@ -76,7 +76,7 @@
       </div>
     </div>
 
-    <!-- 历史订单 -->
+    <!-- History Orders -->
     <div v-else class="card">
       <el-table :data="orders" stripe style="width: 100%" v-loading="loading">
         <el-table-column :label="t('orderNo')" prop="id" width="80">
@@ -130,7 +130,7 @@
       </el-table>
     </div>
 
-    <!-- 结账确认弹窗 -->
+    <!-- Checkout Confirm Dialog -->
     <el-dialog v-model="closeDlg" :title="t('confirmClose')" width="480px" :close-on-click-modal="false">
       <div class="checkout-content" v-if="target">
         <div class="checkout-header">

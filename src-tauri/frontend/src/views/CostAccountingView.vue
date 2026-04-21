@@ -118,7 +118,7 @@
       </el-table>
     </div>
 
-    <!-- 添加支出弹窗 -->
+    <!-- Add Expense Dialog -->
     <el-dialog v-model="showAddExpense" :title="t('addExpense')" width="450px">
       <el-form :model="expenseForm" label-width="80px">
         <el-form-item :label="t('date')">

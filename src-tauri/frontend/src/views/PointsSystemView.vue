@@ -49,7 +49,7 @@
     </div>
 
     <div class="main-content">
-      <!-- 左侧：会员积分列表 -->
+      <!-- Left: Member Points List -->
       <div class="member-points-panel">
         <div class="panel-header">
           <h3>{{ t('memberPoints') }}</h3>
@@ -103,7 +103,7 @@
         </el-table>
       </div>
 
-      <!-- 右侧：积分商城 -->
+      <!-- Right: Points Mall -->
       <div class="points-mall-panel">
         <div class="panel-header">
           <h3>{{ t('pointsMall') }}</h3>
@@ -138,7 +138,7 @@
       </div>
     </div>
 
-    <!-- 积分调整弹窗 -->
+    <!-- Points Adjust Dialog -->
     <el-dialog v-model="showAdjust" :title="adjustType === 'add' ? t('addPoints') : t('deductPoints')" width="400px">
       <el-form :model="adjustForm" label-width="80px">
         <el-form-item :label="t('member')">
@@ -160,7 +160,7 @@
       </template>
     </el-dialog>
 
-    <!-- 积分规则设置弹窗 -->
+    <!-- Points Rules Dialog -->
     <el-dialog v-model="showSettings" :title="t('pointsRules')" width="500px">
       <el-form :model="rulesForm" label-width="120px">
         <el-form-item :label="t('pointsPerYuan')">
@@ -185,7 +185,7 @@
       </template>
     </el-dialog>
 
-    <!-- 积分历史弹窗 -->
+    <!-- Points History Dialog -->
     <el-dialog v-model="showHistoryDialog" :title="t('pointsHistory')" width="600px">
       <el-table :data="pointsHistory" stripe max-height="400">
         <el-table-column prop="created_at" :label="t('time')" width="160">

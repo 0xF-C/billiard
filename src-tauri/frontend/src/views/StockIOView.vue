@@ -75,7 +75,7 @@
       </el-table>
     </div>
 
-    <!-- 入库弹窗 -->
+    <!-- Stock In Dialog -->
     <el-dialog v-model="showStockIn" :title="t('stockIn')" width="500px">
       <el-form :model="stockInForm" label-width="80px">
         <el-form-item :label="t('product')">
@@ -102,7 +102,7 @@
       </template>
     </el-dialog>
 
-    <!-- 出库弹窗 -->
+    <!-- Stock Out Dialog -->
     <el-dialog v-model="showStockOut" :title="t('stockOut')" width="500px">
       <el-form :model="stockOutForm" label-width="80px">
         <el-form-item :label="t('product')">

@@ -130,7 +130,7 @@
       </div>
     </div>
 
-    <!-- 添加/编辑弹窗 -->
+    <!-- Add/Edit Dialog -->
     <el-dialog v-model="formDlg" :title="editTarget ? t('editMember') : t('addMember')" width="560px" :close-on-click-modal="false">
       <div class="form-body">
         <div class="form-row">
@@ -196,7 +196,7 @@
       </template>
     </el-dialog>
 
-    <!-- 充值弹窗 -->
+    <!-- Recharge Dialog -->
     <el-dialog v-model="rechDlg" :title="t('recharge')" width="420px" :close-on-click-modal="false">
       <div class="recharge-content" v-if="rechTarget">
         <el-card class="member-info-card">
@@ -244,7 +244,7 @@
       </template>
     </el-dialog>
 
-    <!-- 余额追溯弹窗 -->
+    <!-- Balance Trace Dialog -->
     <el-dialog v-model="historyDlg" :title="t('balanceHistory') + ' - ' + (historyMember?.name || '')" width="720px" :close-on-click-modal="false">
       <div class="history-content" v-if="historyMember">
         <div class="history-header-card">
