@@ -32,11 +32,12 @@ fn init_font() -> Result<FontRef<'static>, String> {
         info!("Trying to load font from: {}", path);
         if let Ok(data) = std::fs::read(path) {
             info!("Read {} bytes from {}", data.len(), path);
-            if let Ok(font) = FontRef::try_from_slice(&data) {
+            // Box::leak 让字体数据获得 'static 生命周期（字体常驻内存，程序退出才释放）
+            let static_data: &'static [u8] = Box::leak(data.into_boxed_slice());
+            if let Ok(font) = FontRef::try_from_slice(static_data) {
                 info!("Successfully loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
-                // 存储字体数据，防止被释放
-                *lock = Some((data.clone(), font.clone()));
+                *lock = Some((static_data.to_vec(), font.clone()));
                 return Ok(font);
             } else {
                 info!("FontRef::try_from_slice failed for {}", path);
