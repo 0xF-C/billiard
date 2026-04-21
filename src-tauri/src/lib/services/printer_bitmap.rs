@@ -30,7 +30,8 @@ fn init_font() -> Result<(), String> {
     
     for path in &paths {
         if let Ok(data) = std::fs::read(path) {
-            if let Ok(font) = FontRef::try_from_slice(&data) {
+            let leaked = Box::leak(data.into_boxed_slice());
+            if let Ok(font) = FontRef::try_from_slice(leaked) {
                 info!("Loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
                 *lock = Some(font);
@@ -47,12 +48,12 @@ fn get_font() -> Result<FontRef<'static>, String> {
     {
         let lock = FONT.lock().unwrap();
         if let Some(ref font) = *lock {
-            return Ok(font.clone());
+            return Ok(font);
         }
     }
     init_font()?;
     let lock = FONT.lock().unwrap();
-    lock.clone().ok_or_else(|| "Font not loaded".to_string())
+    lock.as_ref().ok_or_else(|| "Font not loaded".to_string()).map(|f| f)
 }
 
 #[cfg(windows)]
