@@ -20,22 +20,23 @@ const BITMAP_WIDTH: u32 = 384;
 
 #[cfg(windows)]
 fn init_font() -> Result<FontRef<'static>, String> {
+    // 注意: ab_glyph FontRef 不支持 .ttc (TrueType Collection)，只支持 .ttf
     let paths = [
         "C:\\Windows\\Fonts\\simhei.ttf",
-        "C:\\Windows\\Fonts\\msyh.ttc",
-        "C:\\Windows\\Fonts\\simsun.ttc",
         "C:\\Windows\\Fonts\\msyhbd.ttf",
+        "C:\\Windows\\Fonts\\simkai.ttf",
+        "C:\\Windows\\Fonts\\simfang.ttf",
     ];
     
     for path in &paths {
         info!("Trying to load font from: {}", path);
         if let Ok(data) = std::fs::read(path) {
             info!("Read {} bytes from {}", data.len(), path);
-            let leaked = Box::leak(data.into_boxed_slice());
-            if let Ok(font) = FontRef::try_from_slice(leaked) {
+            if let Ok(font) = FontRef::try_from_slice(&data) {
                 info!("Successfully loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
-                *lock = Some((leaked.to_vec(), font.clone()));
+                // 存储字体数据，防止被释放
+                *lock = Some((data.clone(), font.clone()));
                 return Ok(font);
             } else {
                 info!("FontRef::try_from_slice failed for {}", path);
@@ -45,7 +46,7 @@ fn init_font() -> Result<FontRef<'static>, String> {
         }
     }
     
-    Err("未找到中文字体。请确保系统安装了 simhei.ttf 或 msyh.ttc。".to_string())
+    Err("未找到中文字体(.ttf)。请确保系统安装了 simhei.ttf".to_string())
 }
 
 #[cfg(windows)]
@@ -60,8 +61,12 @@ fn get_font() -> Result<FontRef<'static>, String> {
 }
 
 #[cfg(windows)]
-fn text_pixel_width(text_len: usize, font_size: f32) -> u32 {
-    (text_len as f32 * font_size * 0.6) as u32
+fn text_pixel_width(text: &str, font_size: f32) -> u32 {
+    // 中文字符宽度 ≈ font_size，ASCII ≈ font_size * 0.6
+    let width: f32 = text.chars().map(|c| {
+        if c.is_ascii() { font_size * 0.6 } else { font_size }
+    }).sum();
+    width as u32
 }
 
 #[cfg(windows)]
@@ -158,7 +163,7 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
             }
         } else {
             let x = if line.align_center {
-                let tw = text_pixel_width(line.text.chars().count(), font_size);
+                let tw = text_pixel_width(&line.text, font_size);
                 (width.saturating_sub(tw)) / 2
             } else {
                 line.x
@@ -187,8 +192,9 @@ fn bitmap_to_esc_pos(img: &GrayImage) -> Vec<u8> {
     data.push(b'v');
     data.push(b'0');
     data.push(0x00);
-    data.push((width & 0xFF) as u8);
-    data.push((width >> 8) as u8);
+    // xL/xH = 每行字节数（不是像素宽度！）
+    data.push((row_bytes & 0xFF) as u8);
+    data.push((row_bytes >> 8) as u8);
     data.push((height & 0xFF) as u8);
     data.push((height >> 8) as u8);
     
