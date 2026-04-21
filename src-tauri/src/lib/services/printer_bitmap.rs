@@ -3,9 +3,9 @@ use crate::lib::services::printer::ESC;
 use log::info;
 
 #[cfg(windows)]
-use ab_glyph::{FontRef, Font, PxScale};
+use ab_glyph::{FontRef, PxScale};
 #[cfg(windows)]
-use image::{GrayImage, Luma, ImageBuffer};
+use image::{GrayImage, Luma};
 #[cfg(windows)]
 use imageproc::drawing::draw_text_mut;
 
@@ -22,15 +22,22 @@ fn load_font() -> Result<FontRef<'static>, String> {
     ];
     
     for path in &paths {
-        if let Ok(data) = std::fs::read(path) {
-            if let Ok(font) = FontRef::try_from_slice(&data) {
-                info!("Loaded font from {}", path);
-                return Ok(font);
-            }
+        let data = match std::fs::read(path) {
+            Ok(d) => d,
+            Err(_) => continue,
+        };
+        if let Ok(font) = FontRef::try_from_slice(&data) {
+            info!("Loaded font from {}", path);
+            return Ok(font);
         }
     }
     
     Err("未找到中文字体。请确保系统安装了 simhei.ttf 或 msyh.ttc。".to_string())
+}
+
+#[cfg(windows)]
+fn text_pixel_width(text_len: usize, font_size: f32) -> u32 {
+    (text_len as f32 * font_size * 0.6) as u32
 }
 
 #[cfg(windows)]
@@ -47,20 +54,19 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     struct Line {
         text: String,
         x: u32,
-        bold: bool,
         is_divider: bool,
         align_center: bool,
     }
     
     let mut lines: Vec<Line> = Vec::new();
     
-    lines.push(Line { text: req.shop_name.clone(), x: 0, bold: true, is_divider: false, align_center: true });
+    lines.push(Line { text: req.shop_name.clone(), x: 0, is_divider: false, align_center: true });
     let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    lines.push(Line { text: now, x: 0, bold: false, is_divider: false, align_center: true });
-    lines.push(Line { text: String::new(), x: 0, bold: false, is_divider: true, align_center: false });
+    lines.push(Line { text: now, x: 0, is_divider: false, align_center: true });
+    lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
     
     let mut add_line = |label: &str, value: &str| {
-        lines.push(Line { text: format!("{} {}", label, value), x: margin, bold: false, is_divider: false, align_center: false });
+        lines.push(Line { text: format!("{} {}", label, value), x: margin, is_divider: false, align_center: false });
     };
     
     if let Some(ref v) = req.order_no { add_line("订单号:", v); }
@@ -70,17 +76,17 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     if let Some(ref v) = req.end_time { add_line("结束时间:", v); }
     if let Some(v) = req.duration_minutes { add_line("时长:", &format!("{}分钟", v)); }
     
-    lines.push(Line { text: String::new(), x: 0, bold: false, is_divider: true, align_center: false });
+    lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
     
     if req.receipt_type == "sale" {
         if let Some(ref items) = req.items {
             for item in items {
                 lines.push(Line { 
                     text: format!("{} x{}  ¥{:.2}", item.name, item.quantity, item.price),
-                    x: margin, bold: false, is_divider: false, align_center: false 
+                    x: margin, is_divider: false, align_center: false 
                 });
             }
-            lines.push(Line { text: String::new(), x: 0, bold: false, is_divider: true, align_center: false });
+            lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
         }
     }
     
@@ -97,16 +103,16 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
         }
     }
     
-    lines.push(Line { text: String::new(), x: 0, bold: false, is_divider: true, align_center: false });
+    lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
     add_line("实收:", &format!("¥{:.2}", req.final_amount));
     
     if let Some(ref method) = req.payment_method {
         add_line("支付方式:", method);
     }
     
-    lines.push(Line { text: String::new(), x: 0, bold: false, is_divider: true, align_center: false });
-    lines.push(Line { text: "感谢您的光临！".to_string(), x: 0, bold: false, is_divider: false, align_center: true });
-    lines.push(Line { text: "欢迎下次再来".to_string(), x: 0, bold: false, is_divider: false, align_center: true });
+    lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
+    lines.push(Line { text: "感谢您的光临！".to_string(), x: 0, is_divider: false, align_center: true });
+    lines.push(Line { text: "欢迎下次再来".to_string(), x: 0, is_divider: false, align_center: true });
     
     let height = lines.len() as u32 * line_height + margin * 2;
     let mut img = GrayImage::from_pixel(width, height, Luma([255u8]));
@@ -120,8 +126,8 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
             }
         } else {
             let x = if line.align_center {
-                let tw = ab_glyph::pt_to_px(line.text.chars().count() as f32 * font_size * 0.6, font_size) as u32;
-                ((width.saturating_sub(tw)) / 2)
+                let tw = text_pixel_width(line.text.chars().count(), font_size);
+                (width.saturating_sub(tw)) / 2
             } else {
                 line.x
             };
@@ -186,6 +192,7 @@ pub fn print_receipt_bitmap(req: &PrintReceiptRequest, printer_name: &str) -> Re
     let data = bitmap_to_esc_pos(&bitmap);
     info!("ESC/POS bitmap data: {} bytes", data.len());
     
+    use std::os::windows::ffi::OsStrExt;
     let printer_name_wide: Vec<u16> = std::ffi::OsStr::new(printer_name)
         .encode_wide()
         .chain(std::iter::once(0))
@@ -214,13 +221,13 @@ pub fn print_receipt_bitmap(req: &PrintReceiptRequest, printer_name: &str) -> Re
             .chain(std::iter::once(0))
             .collect();
         
-        let doc_info = DOC_INFO_1W {
+        let mut doc_info = DOC_INFO_1W {
             pDocName: doc_name.as_ptr(),
-            pOutputFile: std::ptr::null(),
+            pOutputFile: std::ptr::null_mut(),
             pDatatype: data_type.as_ptr(),
         };
         
-        let job_id: DWORD = StartDocPrinterW(hprinter, 1, &doc_info as *const _ as *mut _);
+        let job_id: DWORD = StartDocPrinterW(hprinter, 1, &mut doc_info);
         if job_id == 0 {
             ClosePrinter(hprinter);
             return Err("StartDocPrinter 失败".to_string());

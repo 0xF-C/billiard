@@ -9,11 +9,7 @@ use log::{info, error, warn};
 use rusb::{self, DeviceHandle, UsbContext};
 
 #[cfg(windows)]
-use image::{GrayImage, Luma};
-#[cfg(windows)]
-use imageproc::drawing::draw_text_mut;
-#[cfg(windows)]
-use rusttype::{Font, Scale};
+use crate::lib::services::printer_bitmap::print_receipt_bitmap;
 
 pub const ESC: u8 = 0x1B;
 pub const GS: u8 = 0x1D;
