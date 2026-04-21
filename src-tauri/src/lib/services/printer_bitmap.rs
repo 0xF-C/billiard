@@ -13,7 +13,13 @@ use log::info;
 const BITMAP_WIDTH: u32 = 384;
 
 #[cfg(windows)]
-fn load_font() -> Result<FontRef<'static>, String> {
+struct OwnedFont {
+    data: Vec<u8>,
+    font: FontRef<'static>,
+}
+
+#[cfg(windows)]
+fn load_font() -> Result<OwnedFont, String> {
     let paths = [
         "C:\\Windows\\Fonts\\simhei.ttf",
         "C:\\Windows\\Fonts\\msyh.ttc",
@@ -28,7 +34,7 @@ fn load_font() -> Result<FontRef<'static>, String> {
         };
         if let Ok(font) = FontRef::try_from_slice(&data) {
             info!("Loaded font from {}", path);
-            return Ok(font);
+            return Ok(OwnedFont { data, font });
         }
     }
     
@@ -48,7 +54,8 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     let line_height = 34u32;
     let margin = 10u32;
     
-    let font = load_font()?;
+    let owned_font = load_font()?;
+    let font = owned_font.font;
     
     struct Line {
         text: String,
