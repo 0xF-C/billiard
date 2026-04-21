@@ -73,7 +73,7 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
     let margin = 10u32;
     
     let font = get_font()?;
-    info!("Got font, rendering bitmap {}x{}", width, height);
+    info!("Got font, ready to render bitmap");
     
     struct Line {
         text: String,
