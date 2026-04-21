@@ -101,10 +101,10 @@ const rejectReason = ref('')
 const selectedItem = ref(null)
 
 const list = ref([
-  { id: 1, customerName: '张三', customerPhone: '13800138001', tableName: '1号桌', date: '2026-04-20', startTime: '14:00', endTime: '16:00', deposit: 100, status: 'pending', auditNote: '', createdAt: new Date() },
-  { id: 2, customerName: '李四', customerPhone: '13800138002', tableName: 'VIP-1', date: '2026-04-20', startTime: '18:00', endTime: '21:00', deposit: 200, status: 'pending', auditNote: '', createdAt: new Date(Date.now() - 1800000) },
-  { id: 3, customerName: '王五', customerPhone: '13800138003', tableName: '2号桌', date: '2026-04-19', startTime: '10:00', endTime: '12:00', deposit: 50, status: 'approved', auditNote: '', auditedBy: '店长', auditedAt: new Date(Date.now() - 3600000) },
-  { id: 4, customerName: '赵六', customerPhone: '13800138004', tableName: null, date: '2026-04-19', startTime: '16:00', endTime: '18:00', deposit: 0, status: 'rejected', auditNote: '时段已满', auditedBy: '店长', auditedAt: new Date(Date.now() - 7200000) },
+  { id: 1, customerName: t('zhangsan'), customerPhone: '13800138001', tableName: '1号桌', date: '2026-04-20', startTime: '14:00', endTime: '16:00', deposit: 100, status: 'pending', auditNote: '', createdAt: new Date() },
+  { id: 2, customerName: t('lisi'), customerPhone: '13800138002', tableName: 'VIP-1', date: '2026-04-20', startTime: '18:00', endTime: '21:00', deposit: 200, status: 'pending', auditNote: '', createdAt: new Date(Date.now() - 1800000) },
+  { id: 3, customerName: t('wangwu'), customerPhone: '13800138003', tableName: '2号桌', date: '2026-04-19', startTime: '10:00', endTime: '12:00', deposit: 50, status: 'approved', auditNote: '', auditedBy: '店长', auditedAt: new Date(Date.now() - 3600000) },
+  { id: 4, customerName: t('zhaoliu'), customerPhone: '13800138004', tableName: null, date: '2026-04-19', startTime: '16:00', endTime: '18:00', deposit: 0, status: 'rejected', auditNote: t('slotFull'), auditedBy: '店长', auditedAt: new Date(Date.now() - 7200000) },
 ])
 
 const filteredList = computed(() => {

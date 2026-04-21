@@ -48,10 +48,10 @@
             <span class="setting-name">{{ t('orderRetention') }}</span>
           </div>
           <el-select v-model="retention.orders">
-            <el-option label="3个月" :value="3" />
-            <el-option label="6个月" :value="6" />
-            <el-option label="1年" :value="12" />
-            <el-option label="永久" :value="999" />
+            <el-option label=t('3months') :value="3" />
+            <el-option label=t('6months') :value="6" />
+            <el-option label=t('1year') :value="12" />
+            <el-option label=t('permanent') :value="999" />
           </el-select>
         </div>
         <div class="setting-row">
@@ -59,10 +59,10 @@
             <span class="setting-name">{{ t('logRetention') }}</span>
           </div>
           <el-select v-model="retention.logs">
-            <el-option label="7天" :value="0.25" />
-            <el-option label="30天" :value="1" />
-            <el-option label="3个月" :value="3" />
-            <el-option label="6个月" :value="6" />
+            <el-option label=t('7days') :value="0.25" />
+            <el-option label=t('30days') :value="1" />
+            <el-option label=t('3months') :value="3" />
+            <el-option label=t('6months') :value="6" />
           </el-select>
         </div>
       </div>
@@ -75,7 +75,7 @@
             <span class="setting-desc">{{ t('loginTimeoutDesc') }}</span>
           </div>
           <el-input-number v-model="access.timeout" :min="5" :max="120" />
-          <span class="unit">分钟</span>
+          <span class="unit">{{ t('minutes') }}</span>
         </div>
         <div class="setting-row">
           <div class="setting-info">
@@ -119,7 +119,7 @@ const backupHistory = ref([
   { time: new Date(Date.now() - 86400000 * 7), size: '11.8 MB', status: 'success' },
 ])
 
-const formatTime = (d) => new Date(d).toLocaleString('zh-CN')
+const formatTime = (d) => new Date(d).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 
 const save = () => ElMessage.success(t('saveSuccess'))
 const manualBackup = () => ElMessage.success(t('backupSuccess'))

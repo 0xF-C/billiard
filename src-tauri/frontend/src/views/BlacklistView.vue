@@ -185,9 +185,9 @@ const filterType = ref('')
 const filterReason = ref('')
 
 const blacklist = ref([
-  { id: 1, name: '李四', phone: '13800138001', type: 'permanent', reason: 'arrears', description: '欠费500元未结清', bannedAt: new Date(Date.now() - 86400000 * 30), expireAt: null, operator: '管理员' },
-  { id: 2, name: '王五', phone: '13800138002', type: 'temporary', reason: 'violation', description: '在店内吸烟屡次劝阻无效', bannedAt: new Date(Date.now() - 86400000 * 10), expireAt: new Date(Date.now() + 86400000 * 20), operator: '店长' },
-  { id: 3, name: '赵六', phone: '13800138003', type: 'permanent', reason: 'fraud', description: '使用假币被抓获', bannedAt: new Date(Date.now() - 86400000 * 60), expireAt: null, operator: '管理员' },
+  { id: 1, name: '李四', phone: '13800138001', type: 'permanent', reason: 'arrears', description: t('arrears500'), bannedAt: new Date(Date.now() - 86400000 * 30), expireAt: null, operator: t('admin') },
+  { id: 2, name: '王五', phone: '13800138002', type: 'temporary', reason: 'violation', description: t('smokingViolation'), bannedAt: new Date(Date.now() - 86400000 * 10), expireAt: new Date(Date.now() + 86400000 * 20), operator: t('manager') },
+  { id: 3, name: '赵六', phone: '13800138003', type: 'permanent', reason: 'fraud', description: t('fakeMoneyFraud'), bannedAt: new Date(Date.now() - 86400000 * 60), expireAt: null, operator: t('admin') },
 ])
 
 const showAdd = ref(false)
@@ -229,12 +229,12 @@ const filteredBlacklist = computed(() => {
 
 const formatDate = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleDateString('zh-CN')
+  return new Date(d).toLocaleDateString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 }
 
 const formatDateTime = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleString('zh-CN')
+  return new Date(d).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 }
 
 const isExpired = (expireAt) => {
@@ -261,14 +261,14 @@ const submitAdd = async () => {
   await addFormRef.value?.validate()
   blacklist.value.unshift({
     id: Date.now(),
-    name: foundMember.value?.name || '未知',
+    name: foundMember.value?.name || t('unknown'),
     phone: addForm.phone,
     type: addForm.type,
     reason: addForm.reason,
     description: addForm.description,
     bannedAt: new Date(),
     expireAt: addForm.expireAt || null,
-    operator: '当前用户',
+    operator: t('currentUser'),
   })
   ElMessage.success(t('addSuccess'))
   showAdd.value = false

@@ -117,7 +117,7 @@ const showSend = ref(false)
 const showTemplate = ref(false)
 const newTemplate = ref({ name: '', content: '' })
 
-const levels = ['普通会员', '银卡会员', '金卡会员', '白金会员', '钻石会员']
+const levels = [t('normalMember'), t('silverMember'), t('goldMember'), '白金会员', t('diamondMember')]
 
 const recipientCount = computed(() => {
   if (sendType.value === 'all') return 328
@@ -126,19 +126,19 @@ const recipientCount = computed(() => {
 })
 
 const templates = ref([
-  { id: 1, name: '促销活动', content: '【星牌台球】亲爱的会员，本周末（4月20-21日）全场5折，欢迎光临！', usageCount: 56 },
-  { id: 2, name: '预订提醒', content: '【星牌台球】您有预订即将开始，请提前10分钟到店。祝您愉快！', usageCount: 128 },
-  { id: 3, name: '充值优惠', content: '【星牌台球】充值300元送100元代金券，限时活动，详询店员！', usageCount: 34 },
-  { id: 4, name: '节日祝福', content: '【星牌台球】感谢您一直以来的支持，祝您节日快乐！', usageCount: 89 },
+  { id: 1, name: t('promotionActivity'), content: t('smsPromoTemplate'), usageCount: 56 },
+  { id: 2, name: t('bookingRemind'), content: t('smsBookingTemplate'), usageCount: 128 },
+  { id: 3, name: t('rechargeOffer'), content: t('smsRechargeTemplate'), usageCount: 34 },
+  { id: 4, name: t('holidayGreetings'), content: t('smsHolidayTemplate'), usageCount: 89 },
 ])
 
 const history = ref([
-  { id: 1, time: new Date(), content: '本周末全场5折，欢迎光临！', count: 328, status: 'success', smsCount: 7 },
-  { id: 2, time: new Date(Date.now() - 86400000), content: '您有预订即将开始，请提前到店', count: 12, status: 'success', smsCount: 1 },
-  { id: 3, time: new Date(Date.now() - 86400000 * 3), content: '充值优惠进行中...', count: 156, status: 'success', smsCount: 3 },
+  { id: 1, time: new Date(), content: t('weekend50OffSms'), count: 328, status: 'success', smsCount: 7 },
+  { id: 2, time: new Date(Date.now() - 86400000), content: t('bookingRemindSms'), count: 12, status: 'success', smsCount: 1 },
+  { id: 3, time: new Date(Date.now() - 86400000 * 3), content: t('rechargeOfferSms'), count: 156, status: 'success', smsCount: 3 },
 ])
 
-const formatTime = (d) => new Date(d).toLocaleString('zh-CN')
+const formatTime = (d) => new Date(d).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 
 const sendSMS = () => {
   if (!smsContent.value) return

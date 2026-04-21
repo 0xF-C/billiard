@@ -158,16 +158,16 @@ const config = ref({
 })
 
 const channels = ref([
-  { id: 1, name: '微信公众号', url: 'https://billiard.example.com/booking/wx', enabled: true, todayOrders: 12, pendingOrders: 3 },
-  { id: 2, name: '小程序', url: 'https://billiard.example.com/booking/mp', enabled: true, todayOrders: 8, pendingOrders: 1 },
-  { id: 3, name: '官网预约', url: 'https://billiard.example.com/booking/web', enabled: true, todayOrders: 5, pendingOrders: 2 },
+  { id: 1, name: t('wechatPublicAccount'), url: 'https://billiard.example.com/booking/wx', enabled: true, todayOrders: 12, pendingOrders: 3 },
+  { id: 2, name: t('miniProgram'), url: 'https://billiard.example.com/booking/mp', enabled: true, todayOrders: 8, pendingOrders: 1 },
+  { id: 3, name: t('officialWebsite'), url: 'https://billiard.example.com/booking/web', enabled: true, todayOrders: 5, pendingOrders: 2 },
 ])
 
 const orders = ref([
-  { id: 1001, channel: '微信公众号', customerName: '张三', customerPhone: '13800138001', tableName: '1号桌', bookingTime: new Date(Date.now() + 3600000 * 2), duration: 2, deposit: 100, status: 'pending' },
-  { id: 1002, channel: '小程序', customerName: '李四', customerPhone: '13800138002', tableName: 'VIP-1', bookingTime: new Date(Date.now() + 3600000 * 4), duration: 3, deposit: 200, status: 'confirmed' },
-  { id: 1003, channel: '官网预约', customerName: '王五', customerPhone: '13800138003', tableName: '2号桌', bookingTime: new Date(Date.now() - 3600000), duration: 2, deposit: 100, status: 'pending' },
-  { id: 1004, channel: '微信公众号', customerName: '赵六', customerPhone: '13800138004', tableName: null, bookingTime: new Date(Date.now() - 86400000), duration: 2, deposit: 50, status: 'cancelled' },
+  { id: 1001, channel: t('wechatPublicAccount'), customerName: '张三', customerPhone: '13800138001', tableName: t('table1'), bookingTime: new Date(Date.now() + 3600000 * 2), duration: 2, deposit: 100, status: 'pending' },
+  { id: 1002, channel: t('miniProgram'), customerName: '李四', customerPhone: '13800138002', tableName: 'VIP-1', bookingTime: new Date(Date.now() + 3600000 * 4), duration: 3, deposit: 200, status: 'confirmed' },
+  { id: 1003, channel: t('officialWebsite'), customerName: '王五', customerPhone: '13800138003', tableName: t('table2'), bookingTime: new Date(Date.now() - 3600000), duration: 2, deposit: 100, status: 'pending' },
+  { id: 1004, channel: t('wechatPublicAccount'), customerName: '赵六', customerPhone: '13800138004', tableName: null, bookingTime: new Date(Date.now() - 86400000), duration: 2, deposit: 50, status: 'cancelled' },
 ])
 
 const filteredOrders = computed(() => {
@@ -184,7 +184,7 @@ const getStatusType = (status) => {
 
 const formatTime = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleString('zh-CN')
+  return new Date(d).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 }
 
 const copyLink = (url) => {

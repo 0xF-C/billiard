@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">{{ t('nav_inventory') }}</h1>
-        <p class="page-subtitle">{{ t('sub_goods_manage') }} - 商品、入库出库、预警、供应商、损耗</p>
+        <p class="page-subtitle">{{ t('sub_goods_manage') }} - {{ t('stockIODesc') }}、{{ t('sub_stock_alert') }}、{{ t('sub_suppliers') }}、{{ t('sub_loss_records') }}</p>
       </div>
       <div class="header-actions">
         <el-button type="primary" size="large">
@@ -15,66 +15,66 @@
 
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-label">商品总数</div>
+        <div class="stat-label">{{ t('totalProducts') }}</div>
         <div class="stat-value">156</div>
-        <div class="stat-meta">种商品</div>
+        <div class="stat-meta">{{ t('productCountUnit') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">库存总值</div>
+        <div class="stat-label">{{ t('totalInventoryValue') }}</div>
         <div class="stat-value">¥24,800</div>
-        <div class="stat-meta">成本价</div>
+        <div class="stat-meta">{{ t('costPrice') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">低库存预警</div>
+        <div class="stat-label">{{ t('sub_stock_alert') }}</div>
         <div class="stat-value">8</div>
-        <div class="stat-meta">需补货</div>
+        <div class="stat-meta">{{ t('needReplenishment') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">本月销售</div>
+        <div class="stat-label">{{ t('monthSales') }}</div>
         <div class="stat-value">¥18,600</div>
-        <div class="stat-meta">销售额</div>
+        <div class="stat-meta">{{ t('salesAmount') }}</div>
       </div>
     </div>
 
     <div class="content-grid">
       <div class="section">
-        <h2 class="section-title">快速导航</h2>
+        <h2 class="section-title">{{ t('quickNav') }}</h2>
         <div class="nav-cards">
           <router-link to="/inventory-manage" class="nav-card">
             <el-icon class="card-icon"><Box /></el-icon>
             <div class="card-title">{{ t('sub_goods_manage') }}</div>
-            <p class="card-desc">商品信息管理</p>
+            <p class="card-desc">{{ t('productInfoManage') }}</p>
           </router-link>
           <router-link to="/category-manage" class="nav-card">
             <el-icon class="card-icon"><Menu /></el-icon>
             <div class="card-title">{{ t('sub_category_manage') }}</div>
-            <p class="card-desc">商品分类管理</p>
+            <p class="card-desc">{{ t('categoryManage') }}</p>
           </router-link>
           <router-link to="/stock-io" class="nav-card">
             <el-icon class="card-icon"><Download /></el-icon>
             <div class="card-title">{{ t('sub_stock_io') }}</div>
-            <p class="card-desc">采购入库、销售出库</p>
+            <p class="card-desc">{{ t('stockIODesc') }}</p>
           </router-link>
           <router-link to="/stock-alert" class="nav-card">
             <el-icon class="card-icon"><Warning /></el-icon>
             <div class="card-title">{{ t('sub_stock_alert') }}</div>
-            <p class="card-desc">低库存和过期提醒</p>
+            <p class="card-desc">{{ t('stockAlertDesc') }}</p>
           </router-link>
           <router-link to="/suppliers" class="nav-card">
             <el-icon class="card-icon"><User /></el-icon>
             <div class="card-title">{{ t('sub_suppliers') }}</div>
-            <p class="card-desc">供应商档案管理</p>
+            <p class="card-desc">{{ t('supplierManage') }}</p>
           </router-link>
           <router-link to="/loss-records" class="nav-card">
             <el-icon class="card-icon"><Delete /></el-icon>
             <div class="card-title">{{ t('sub_loss_records') }}</div>
-            <p class="card-desc">破损、过期、赠送</p>
+            <p class="card-desc">{{ t('lossRecordsDesc') }}</p>
           </router-link>
         </div>
       </div>
 
       <div class="section">
-        <h2 class="section-title">库存预警</h2>
+        <h2 class="section-title">{{ t('sub_stock_alert') }}</h2>
         <el-table :data="stockAlerts" stripe style="width: 100%">
 <el-table-column prop="productName" :label="t('productName')" width="150" />
           <el-table-column prop="category" :label="t('categoryName')" width="100" />
@@ -96,7 +96,7 @@
       </div>
 
       <div class="section">
-        <h2 class="section-title">商品分类统计</h2>
+        <h2 class="section-title">{{ t('categoryStats') }}</h2>
         <div class="category-stats">
           <div v-for="cat in categoryStats" :key="cat.id" class="category-item">
             <div class="category-header">
@@ -131,10 +131,10 @@ const stockAlerts = ref([
 ])
 
 const categoryStats = ref([
-  { id: 1, name: '酒水饮料', count: 45, value: 8600, percentage: 35, color: '#4caf50' },
-  { id: 2, name: '小食零食', count: 32, value: 5200, percentage: 21, color: '#2196f3' },
-  { id: 3, name: '台球配件', count: 56, value: 8400, percentage: 34, color: '#ffc107' },
-  { id: 4, name: '其他', count: 23, value: 2600, percentage: 10, color: '#9c27b0' }
+  { id: 1, name: t('drinks'), count: 45, value: 8600, percentage: 35, color: '#4caf50' },
+  { id: 2, name: t('snacks'), count: 32, value: 5200, percentage: 21, color: '#2196f3' },
+  { id: 3, name: t('billiardAccessories'), count: 56, value: 8400, percentage: 34, color: '#ffc107' },
+  { id: 4, name: t('other'), count: 23, value: 2600, percentage: 10, color: '#9c27b0' }
 ])
 </script>
 

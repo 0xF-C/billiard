@@ -224,10 +224,10 @@ import { t } from '../i18n'
 const searchKw = ref('')
 const members = ref([])
 const gifts = ref([
-  { id: 1, name: '饮料券', points: 100, stock: 50 },
-  { id: 2, name: '小时券', points: 300, stock: 20 },
-  { id: 3, name: '50元代金券', points: 500, stock: 10 },
-  { id: 4, name: '精美台球杆', points: 5000, stock: 2 },
+  { id: 1, name: t('drinkCoupon'), points: 100, stock: 50 },
+  { id: 2, name: t('hourCoupon'), points: 300, stock: 20 },
+  { id: 3, name: t('50YuanCoupon'), points: 500, stock: 10 },
+  { id: 4, name: t('premiumCue'), points: 5000, stock: 2 },
 ])
 
 const stats = reactive({
@@ -260,29 +260,29 @@ const showAddGift = ref(false)
 
 const getLevelColor = (level) => {
   const colors = {
-    '普通会员': '#909399',
-    '银卡会员': '#909399',
-    '金卡会员': '#e6a23c',
+    t('normalMember'): '#909399',
+    t('silverMember'): '#909399',
+    t('goldMember'): '#e6a23c',
     '白金会员': '#409eff',
-    '钻石会员': '#a855f7',
+    t('diamondMember'): '#a855f7',
   }
   return colors[level] || '#909399'
 }
 
 const getLevelType = (level) => {
   const types = {
-    '普通会员': 'info',
-    '银卡会员': 'info',
-    '金卡会员': 'warning',
+    t('normalMember'): 'info',
+    t('silverMember'): 'info',
+    t('goldMember'): 'warning',
     '白金会员': 'primary',
-    '钻石会员': 'danger',
+    t('diamondMember'): 'danger',
   }
   return types[level] || 'info'
 }
 
 const formatTime = (ts) => {
   if (!ts) return '-'
-  return new Date(ts).toLocaleString('zh-CN')
+  return new Date(ts).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 }
 
 const loadMembers = async () => {
@@ -318,9 +318,9 @@ const submitAdjust = () => {
 
 const showHistory = (member) => {
   pointsHistory.value = [
-    { created_at: new Date(Date.now() - 86400000 * 5), type: 'earn', points: 50, description: '消费赠送' },
-    { created_at: new Date(Date.now() - 86400000 * 3), type: 'redeem', points: 100, description: '兑换饮料券' },
-    { created_at: new Date(Date.now() - 86400000), type: 'earn', points: 200, description: '充值赠送' },
+    { created_at: new Date(Date.now() - 86400000 * 5), type: 'earn', points: 50, description: t('consumptionGift') },
+    { created_at: new Date(Date.now() - 86400000 * 3), type: 'redeem', points: 100, description: t('redeemDrinkCoupon') },
+    { created_at: new Date(Date.now() - 86400000), type: 'earn', points: 200, description: t('rechargeGift') },
   ]
   showHistoryDialog.value = true
 }

@@ -148,10 +148,10 @@ const showStockOut = ref(false)
 
 const products = ref([])
 const records = ref([
-  { id: 1, time: new Date(), type: 'in', productName: '可口可乐', sku: 'COLA-330', quantity: 50, unit: '瓶', beforeStock: 20, afterStock: 70, reason: '进货', operator: '店长' },
-  { id: 2, time: new Date(Date.now() - 3600000), type: 'out', productName: '矿泉水', sku: 'WATER-500', quantity: 10, unit: '瓶', beforeStock: 60, afterStock: 50, reason: '销售', operator: '服务员' },
-  { id: 3, time: new Date(Date.now() - 7200000), type: 'in', productName: '巧粉', sku: 'CHALK-01', quantity: 100, unit: '个', beforeStock: 30, afterStock: 130, reason: '进货', operator: '店长' },
-  { id: 4, time: new Date(Date.now() - 86400000), type: 'out', productName: '手套', sku: 'GLOVE-M', quantity: 5, unit: '副', beforeStock: 20, afterStock: 15, reason: '销售', operator: '服务员' },
+  { id: 1, time: new Date(), type: 'in', productName: t('cocaCola'), sku: 'COLA-330', quantity: 50, unit: t('bottle'), beforeStock: 20, afterStock: 70, reason: t('purchase'), operator: '店长' },
+  { id: 2, time: new Date(Date.now() - 3600000), type: 'out', productName: t('mineralWater'), sku: 'WATER-500', quantity: 10, unit: t('bottle'), beforeStock: 60, afterStock: 50, reason: t('sales'), operator: t('waiter') },
+  { id: 3, time: new Date(Date.now() - 7200000), type: 'in', productName: t('chalk'), sku: 'CHALK-01', quantity: 100, unit: t('piece_unit'), beforeStock: 30, afterStock: 130, reason: t('purchase'), operator: '店长' },
+  { id: 4, time: new Date(Date.now() - 86400000), type: 'out', productName: t('gloves'), sku: 'GLOVE-M', quantity: 5, unit: t('pair'), beforeStock: 20, afterStock: 15, reason: t('sales'), operator: t('waiter') },
 ])
 
 const stockInForm = reactive({
@@ -171,7 +171,7 @@ const stockOutForm = reactive({
 
 const formatTime = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleString('zh-CN')
+  return new Date(d).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 }
 
 const loadRecords = () => {
@@ -197,10 +197,10 @@ const submitStockIn = () => {
     productName: product.name,
     sku: product.sku || '-',
     quantity: stockInForm.quantity,
-    unit: product.unit || '个',
+    unit: product.unit || t('piece_unit'),
     beforeStock: product.stock || 0,
     afterStock: (product.stock || 0) + stockInForm.quantity,
-    reason: stockInForm.remark || '进货',
+    reason: stockInForm.remark || t('purchase'),
     operator: '当前用户',
   })
 
@@ -230,10 +230,10 @@ const submitStockOut = () => {
     productName: product.name,
     sku: product.sku || '-',
     quantity: stockOutForm.quantity,
-    unit: product.unit || '个',
+    unit: product.unit || t('piece_unit'),
     beforeStock: product.stock || 0,
     afterStock: (product.stock || 0) - stockOutForm.quantity,
-    reason: stockOutForm.reason || '出库',
+    reason: stockOutForm.reason || t('stockOutReason'),
     operator: '当前用户',
   })
 

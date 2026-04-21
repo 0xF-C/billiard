@@ -17,12 +17,12 @@
       <div class="stat-card">
         <div class="stat-label">{{ t('activeMembers') }}</div>
         <div class="stat-value">1,234</div>
-        <div class="stat-meta">活跃会员</div>
+        <div class="stat-meta">{{ t('activeMembers') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">本月充值</div>
+        <div class="stat-label">{{ t('monthRecharge') }}</div>
         <div class="stat-value">¥45,600</div>
-        <div class="stat-meta">总充值额</div>
+        <div class="stat-meta">{{ t('totalRecharge') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">{{ t('average') }}{{ t('consumption') }}</div>
@@ -30,51 +30,51 @@
         <div class="stat-meta">{{ t('avgConsumption') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">流失预警</div>
+        <div class="stat-label">{{ t('churnWarning') }}</div>
         <div class="stat-value">23</div>
-        <div class="stat-meta">30天未消费</div>
+        <div class="stat-meta">{{ t('noConsumption30Days') }}</div>
       </div>
     </div>
 
     <div class="content-grid">
       <div class="section">
-        <h2 class="section-title">快速导航</h2>
+        <h2 class="section-title">{{ t('quickNav') }}</h2>
         <div class="nav-cards">
           <router-link to="/members" class="nav-card">
             <el-icon class="card-icon"><User /></el-icon>
             <div class="card-title">{{ t('sub_member_files') }}</div>
-            <p class="card-desc">管理会员档案和信息</p>
+            <p class="card-desc">{{ t('memberFilesDesc') }}</p>
           </router-link>
           <router-link to="/member-levels" class="nav-card">
             <el-icon class="card-icon"><Trophy /></el-icon>
             <div class="card-title">{{ t('sub_member_cards') }}</div>
-            <p class="card-desc">设置卡种和等级</p>
+            <p class="card-desc">{{ t('memberCardsDesc') }}</p>
           </router-link>
           <router-link to="/recharge" class="nav-card">
             <el-icon class="card-icon"><Wallet /></el-icon>
             <div class="card-title">{{ t('sub_recharge_center') }}</div>
-            <p class="card-desc">会员充值管理</p>
+            <p class="card-desc">{{ t('rechargeCenterDesc') }}</p>
           </router-link>
           <router-link to="/points" class="nav-card">
             <el-icon class="card-icon"><Star /></el-icon>
             <div class="card-title">{{ t('sub_points_system') }}</div>
-            <p class="card-desc">积分规则和兑换</p>
+            <p class="card-desc">{{ t('pointsSystemDesc') }}</p>
           </router-link>
           <router-link to="/member-analysis" class="nav-card">
             <el-icon class="card-icon"><DataAnalysis /></el-icon>
             <div class="card-title">{{ t('sub_member_analysis') }}</div>
-            <p class="card-desc">会员消费分析</p>
+            <p class="card-desc">{{ t('memberAnalysisDesc') }}</p>
           </router-link>
           <router-link to="/blacklist" class="nav-card">
             <el-icon class="card-icon"><Delete /></el-icon>
             <div class="card-title">{{ t('sub_blacklist') }}</div>
-            <p class="card-desc">黑名单管理</p>
+            <p class="card-desc">{{ t('blacklistDesc') }}</p>
           </router-link>
         </div>
       </div>
 
       <div class="section">
-        <h2 class="section-title">会员等级分布</h2>
+        <h2 class="section-title">{{ t('memberLevelDistribution') }}</h2>
         <div class="level-distribution">
           <div v-for="level in memberLevels" :key="level.id" class="level-item">
             <div class="level-header">
@@ -89,16 +89,16 @@
       </div>
 
       <div class="section">
-        <h2 class="section-title">最近充值记录</h2>
+        <h2 class="section-title">{{ t('recentRecharges') }}</h2>
         <el-table :data="recentRecharges" stripe style="width: 100%">
           <el-table-column prop="memberName" label="会员名称" width="150" />
-          <el-table-column prop="amount" label="充值金额" width="120">
+          <el-table-column prop="amount" label=t('rechargeAmount') width="120">
             <template #default="{ row }">
               <span style="color: var(--accent-primary)">¥{{ row.amount }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="bonus" label="赠送金额" width="120" />
-          <el-table-column prop="time" label="充值时间" width="180" />
+          <el-table-column prop="bonus" label=t('bonusAmount') width="120" />
+          <el-table-column prop="time" label=t('rechargeTime') width="180" />
           <el-table-column label="操作" width="100">
             <template #default>
               <el-button link type="primary" size="small">{{ t('detail') }}</el-button>
@@ -116,10 +116,10 @@ import { Plus, User, Trophy, Wallet, Star, DataAnalysis, Delete } from '@element
 import { t } from '../i18n'
 
 const memberLevels = [
-  { id: 1, name: '普通会员', count: 850, percentage: 69, color: '#4caf50' },
-  { id: 2, name: '银卡会员', count: 250, percentage: 20, color: '#2196f3' },
-  { id: 3, name: '金卡会员', count: 100, percentage: 8, color: '#ffc107' },
-  { id: 4, name: '钻石会员', count: 34, percentage: 3, color: '#e91e63' }
+  { id: 1, name: t('normalMember'), count: 850, percentage: 69, color: '#4caf50' },
+  { id: 2, name: t('silverMember'), count: 250, percentage: 20, color: '#2196f3' },
+  { id: 3, name: t('goldMember'), count: 100, percentage: 8, color: '#ffc107' },
+  { id: 4, name: t('diamondMember'), count: 34, percentage: 3, color: '#e91e63' }
 ]
 
 const recentRecharges = ref([

@@ -159,9 +159,9 @@ const reportTypes = ref([
 ])
 
 const exportHistory = ref([
-  { time: new Date(Date.now() - 3600000), types: ['收入报表', '订单报表'], startDate: '2026-04-01', endDate: '2026-04-19', format: 'xlsx', operator: '管理员' },
-  { time: new Date(Date.now() - 86400000), types: ['会员报表'], startDate: '2026-03-01', endDate: '2026-03-31', format: 'pdf', operator: '店长' },
-  { time: new Date(Date.now() - 86400000 * 3), types: ['桌台报表', '分析报表'], startDate: '2026-04-01', endDate: '2026-04-15', format: 'xlsx', operator: '管理员' },
+  { time: new Date(Date.now() - 3600000), types: [t('revenueReport'), t('orderReport')], startDate: '2026-04-01', endDate: '2026-04-19', format: 'xlsx', operator: t('admin') },
+  { time: new Date(Date.now() - 86400000), types: [t('memberReport')], startDate: '2026-03-01', endDate: '2026-03-31', format: 'pdf', operator: t('manager') },
+  { time: new Date(Date.now() - 86400000 * 3), types: [t('tableReport'), t('analysisReport')], startDate: '2026-04-01', endDate: '2026-04-15', format: 'xlsx', operator: t('admin') },
 ])
 
 const toggleType = (id) => {
@@ -175,7 +175,7 @@ const toggleType = (id) => {
 
 const formatTime = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleString('zh-CN')
+  return new Date(d).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 }
 
 const quickExport = (type) => {
@@ -226,7 +226,7 @@ const doExport = async () => {
     startDate: dateRange.value[0],
     endDate: dateRange.value[1],
     format: exportFormat.value,
-    operator: '当前用户',
+    operator: t('currentUser'),
   })
 
   ElMessage.success(t('exportSuccess'))

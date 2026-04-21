@@ -15,61 +15,61 @@
 
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-label">在职员工</div>
+        <div class="stat-label">{{ t('activeStaff') }}</div>
         <div class="stat-value">24</div>
-        <div class="stat-meta">人</div>
+        <div class="stat-meta">{{ t('people') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">今日出勤</div>
+        <div class="stat-label">{{ t('todayAttendance') }}</div>
         <div class="stat-value">22</div>
-        <div class="stat-meta">人次</div>
+        <div class="stat-meta">{{ t('times') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">本月工资</div>
+        <div class="stat-label">{{ t('totalPayroll') }}</div>
         <div class="stat-value">¥48,600</div>
-        <div class="stat-meta">待发放</div>
+        <div class="stat-meta">{{ t('pendingPayment') }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">平均绩效</div>
+        <div class="stat-label">{{ t('avgPerformance') }}</div>
         <div class="stat-value">8.6</div>
-        <div class="stat-meta">分/10分</div>
+        <div class="stat-meta">{{ t('scoreMax10') }}</div>
       </div>
     </div>
 
     <div class="content-grid">
       <div class="section">
-        <h2 class="section-title">快速导航</h2>
+        <h2 class="section-title">{{ t('quickNav') }}</h2>
         <div class="nav-cards">
           <router-link to="/staff-files" class="nav-card">
             <el-icon class="card-icon"><User /></el-icon>
             <div class="card-title">{{ t('sub_staff_files') }}</div>
-            <p class="card-desc">员工基本信息</p>
+            <p class="card-desc">{{ t('staffFilesDesc') }}</p>
           </router-link>
           <router-link to="/attendance" class="nav-card">
             <el-icon class="card-icon"><Clock /></el-icon>
             <div class="card-title">{{ t('sub_attendance') }}</div>
-            <p class="card-desc">排班表、打卡记录</p>
+            <p class="card-desc">{{ t('attendanceDesc') }}</p>
           </router-link>
           <router-link to="/performance" class="nav-card">
             <el-icon class="card-icon"><DataAnalysis /></el-icon>
             <div class="card-title">{{ t('sub_performance') }}</div>
-            <p class="card-desc">服务、销售、提成</p>
+            <p class="card-desc">{{ t('performanceDesc') }}</p>
           </router-link>
           <router-link to="/permissions" class="nav-card">
             <el-icon class="card-icon"><Setting /></el-icon>
             <div class="card-title">{{ t('sub_permissions') }}</div>
-            <p class="card-desc">角色权限分配</p>
+            <p class="card-desc">{{ t('permissionsDesc') }}</p>
           </router-link>
           <router-link to="/salary" class="nav-card">
             <el-icon class="card-icon"><Money /></el-icon>
             <div class="card-title">{{ t('sub_salary') }}</div>
-            <p class="card-desc">工资核算和发放</p>
+            <p class="card-desc">{{ t('salaryDesc') }}</p>
           </router-link>
         </div>
       </div>
 
       <div class="section">
-        <h2 class="section-title">员工角色分布</h2>
+        <h2 class="section-title">{{ t('staffRoleDistribution') }}</h2>
         <div class="role-distribution">
           <div v-for="role in staffRoles" :key="role.id" class="role-item">
             <div class="role-header">
@@ -88,13 +88,13 @@
       </div>
 
       <div class="section">
-        <h2 class="section-title">本月出勤统计</h2>
+        <h2 class="section-title">{{ t('monthAttendanceStats') }}</h2>
         <el-table :data="attendanceStats" stripe style="width: 100%">
-          <el-table-column prop="staffName" label="员工名称" width="120" />
-          <el-table-column prop="position" label="岗位" width="100" />
-          <el-table-column prop="workDays" label="出勤天数" width="100" />
-          <el-table-column prop="leaveDays" label="请假天数" width="100" />
-          <el-table-column prop="attendance" label="出勤率" width="100">
+          <el-table-column prop="staffName" label=t('staffName') width="120" />
+          <el-table-column prop="position" label=t('position') width="100" />
+          <el-table-column prop="workDays" label=t('workDays') width="100" />
+          <el-table-column prop="leaveDays" label=t('leaveDays') width="100" />
+          <el-table-column prop="attendance" label=t('attendanceRate') width="100">
             <template #default="{ row }">
               <el-progress :percentage="row.attendance" />
             </template>
@@ -116,18 +116,18 @@ import { Plus, User, Clock, DataAnalysis, Setting, Money } from '@element-plus/i
 import { t } from '../i18n'
 
 const staffRoles = ref([
-  { id: 1, name: '店长', count: 2, percentage: 8, color: '#e91e63', avgSalary: 8000 },
-  { id: 2, name: '收银员', count: 4, percentage: 17, color: '#2196f3', avgSalary: 3500 },
-  { id: 3, name: '服务员', count: 14, percentage: 58, color: '#4caf50', avgSalary: 2800 },
-  { id: 4, name: '助教', count: 4, percentage: 17, color: '#ffc107', avgSalary: 3200 }
+  { id: 1, name: t('manager'), count: 2, percentage: 8, color: '#e91e63', avgSalary: 8000 },
+  { id: 2, name: t('cashier'), count: 4, percentage: 17, color: '#2196f3', avgSalary: 3500 },
+  { id: 3, name: t('waiter'), count: 14, percentage: 58, color: '#4caf50', avgSalary: 2800 },
+  { id: 4, name: t('assistant'), count: 4, percentage: 17, color: '#ffc107', avgSalary: 3200 }
 ])
 
 const attendanceStats = ref([
-  { staffName: '王经理', position: '店长', workDays: 22, leaveDays: 1, attendance: 96 },
-  { staffName: '李收银', position: '收银员', workDays: 21, leaveDays: 2, attendance: 91 },
-  { staffName: '张服务', position: '服务员', workDays: 20, leaveDays: 3, attendance: 87 },
-  { staffName: '刘助教', position: '助教', workDays: 22, leaveDays: 1, attendance: 96 },
-  { staffName: '陈服务', position: '服务员', workDays: 19, leaveDays: 4, attendance: 83 }
+  { staffName: '王经理', position: t('manager'), workDays: 22, leaveDays: 1, attendance: 96 },
+  { staffName: '李收银', position: t('cashier'), workDays: 21, leaveDays: 2, attendance: 91 },
+  { staffName: '张服务', position: t('waiter'), workDays: 20, leaveDays: 3, attendance: 87 },
+  { staffName: '刘助教', position: t('assistant'), workDays: 22, leaveDays: 1, attendance: 96 },
+  { staffName: '陈服务', position: t('waiter'), workDays: 19, leaveDays: 4, attendance: 83 }
 ])
 </script>
 

@@ -133,17 +133,17 @@ const stats = ref({
 })
 
 const staffList = ref([
-  { id: 1, name: '张三' },
-  { id: 2, name: '李四' },
-  { id: 3, name: '王五' },
+  { id: 1, name: t('zhangsan') },
+  { id: 2, name: t('lisi') },
+  { id: 3, name: t('wangwu') },
 ])
 
 const records = ref([
-  { date: '2026-04-19', staffId: 1, staffName: '张三', clockIn: '09:02', clockOut: null, hours: 0, status: 'late' },
-  { date: '2026-04-18', staffId: 1, staffName: '张三', clockIn: '08:55', clockOut: '18:30', hours: 9.5, status: 'normal' },
-  { date: '2026-04-17', staffId: 1, staffName: '张三', clockIn: '09:15', clockOut: '18:00', hours: 8.5, status: 'late', remark: '堵车' },
-  { date: '2026-04-16', staffId: 2, staffName: '李四', clockIn: null, clockOut: null, hours: 0, status: 'leave', remark: '事假' },
-  { date: '2026-04-15', staffId: 1, staffName: '张三', clockIn: '08:50', clockOut: '18:00', hours: 9, status: 'normal' },
+  { date: '2026-04-19', staffId: 1, staffName: t('zhangsan'), clockIn: '09:02', clockOut: null, hours: 0, status: 'late' },
+  { date: '2026-04-18', staffId: 1, staffName: t('zhangsan'), clockIn: '08:55', clockOut: '18:30', hours: 9.5, status: 'normal' },
+  { date: '2026-04-17', staffId: 1, staffName: t('zhangsan'), clockIn: '09:15', clockOut: '18:00', hours: 8.5, status: 'late', remark: '堵车' },
+  { date: '2026-04-16', staffId: 2, staffName: t('lisi'), clockIn: null, clockOut: null, hours: 0, status: 'leave', remark: '事假' },
+  { date: '2026-04-15', staffId: 1, staffName: t('zhangsan'), clockIn: '08:50', clockOut: '18:00', hours: 9, status: 'normal' },
 ])
 
 const filteredRecords = computed(() => {
@@ -153,7 +153,7 @@ const filteredRecords = computed(() => {
 
 const formatDate = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  return new Date(d).toLocaleDateString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'), { month: 'short', day: 'numeric' })
 }
 
 const isLate = (time) => {

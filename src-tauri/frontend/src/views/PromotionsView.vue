@@ -126,15 +126,15 @@ const showAdd = ref(false)
 const form = ref({ name: '', type: '', description: '', startDate: '', endDate: '' })
 
 const activePromos = ref([
-  { id: 1, name: '周末5折狂欢', type: 'discount', description: '周六周日全场5折，不限桌台', startDate: '2026-04-01', endDate: '2026-04-30', status: 'running', participants: 286, revenue: 42800 },
-  { id: 2, name: '充值300送100', type: 'gift', description: '充值满300送100代金券', startDate: '2026-04-10', endDate: '2026-05-10', status: 'running', participants: 52, revenue: 15600 },
+  { id: 1, name: t('weekend50Off'), type: 'discount', description: t('weekend50OffDesc'), startDate: '2026-04-01', endDate: '2026-04-30', status: 'running', participants: 286, revenue: 42800 },
+  { id: 2, name: t('recharge300Get100'), type: 'gift', description: t('recharge300Get100Desc'), startDate: '2026-04-10', endDate: '2026-05-10', status: 'running', participants: 52, revenue: 15600 },
 ])
 
 const allPromos = ref([
-  { id: 1, name: '周末5折狂欢', type: 'discount', description: '周六周日全场5折', startDate: '2026-04-01', endDate: '2026-04-30', status: 'running', participants: 286, revenue: 42800 },
-  { id: 2, name: '充值300送100', type: 'gift', description: '充值满300送100代金券', startDate: '2026-04-10', endDate: '2026-05-10', status: 'running', participants: 52, revenue: 15600 },
-  { id: 3, name: '新店开业8折', type: 'discount', description: '开业首月全场8折', startDate: '2026-02-01', endDate: '2026-02-28', status: 'ended', participants: 420, revenue: 52000 },
-  { id: 4, name: '晚场套餐特惠', type: 'bundle', description: '晚场18:00-22:00套餐价88元', startDate: '2026-03-01', endDate: '2026-03-31', status: 'ended', participants: 186, revenue: 16368 },
+  { id: 1, name: t('weekend50Off'), type: 'discount', description: '周六周日全场5折', startDate: '2026-04-01', endDate: '2026-04-30', status: 'running', participants: 286, revenue: 42800 },
+  { id: 2, name: t('recharge300Get100'), type: 'gift', description: t('recharge300Get100Desc'), startDate: '2026-04-10', endDate: '2026-05-10', status: 'running', participants: 52, revenue: 15600 },
+  { id: 3, name: t('newStore80Off'), type: 'discount', description: t('newStore80OffDesc'), startDate: '2026-02-01', endDate: '2026-02-28', status: 'ended', participants: 420, revenue: 52000 },
+  { id: 4, name: t('nightPackageSpecial'), type: 'bundle', description: t('nightPackageSpecialDesc'), startDate: '2026-03-01', endDate: '2026-03-31', status: 'ended', participants: 186, revenue: 16368 },
 ])
 
 const getStatusTag = (status) => {
@@ -144,7 +144,7 @@ const getStatusTag = (status) => {
 
 const formatDate = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  return new Date(d).toLocaleDateString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'), { month: 'short', day: 'numeric' })
 }
 
 const submit = () => {

@@ -187,11 +187,11 @@ const monthlyData = ref([
 ])
 
 const expenses = ref([
-  { id: 1, date: '2026-04-01', category: 'rent', amount: 12000, remark: '4月房租', operator: '管理员' },
-  { id: 2, date: '2026-04-05', category: 'salary', amount: 2500, remark: '员工工资-张三', operator: '店长' },
-  { id: 3, date: '2026-04-10', category: 'utilities', amount: 800, remark: '电费', operator: '管理员' },
-  { id: 4, date: '2026-04-12', category: 'supplies', amount: 350, remark: '巧粉、手套等耗材', operator: '店长' },
-  { id: 5, date: '2026-04-15', category: 'maintenance', amount: 200, remark: '球桌维修', operator: '管理员' },
+  { id: 1, date: '2026-04-01', category: 'rent', amount: 12000, remark: t('rentApril'), operator: '管理员' },
+  { id: 2, date: '2026-04-05', category: 'salary', amount: 2500, remark: t('staffSalaryZhang'), operator: '店长' },
+  { id: 3, date: '2026-04-10', category: 'utilities', amount: 800, remark: t('electricityFee'), operator: '管理员' },
+  { id: 4, date: '2026-04-12', category: 'supplies', amount: 350, remark: t('consumables'), operator: '店长' },
+  { id: 5, date: '2026-04-15', category: 'maintenance', amount: 200, remark: t('tableRepair'), operator: '管理员' },
 ])
 
 const maxChartValue = computed(() => {
@@ -210,7 +210,7 @@ const barHeight = (value, max) => {
 
 const formatDate = (d) => {
   if (!d) return '-'
-  return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  return new Date(d).toLocaleDateString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'), { month: 'short', day: 'numeric' })
 }
 
 const loadData = async () => {
@@ -236,7 +236,7 @@ const submitExpense = async () => {
 }
 
 const editExpense = (row) => {
-  ElMessage.info('编辑功能开发中')
+  ElMessage.info(t('editFeatureInProgress'))
 }
 
 const deleteExpense = async (row) => {
