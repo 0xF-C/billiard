@@ -156,7 +156,7 @@
       </div>
     </div>
 
-    <!-- Recharge Records -->
+    <!-- {{ t('RechargeRecords') }} -->
     <div class="records-section">
       <div class="section-header">
         <h3>{{ t('recentRecords') }}</h3>

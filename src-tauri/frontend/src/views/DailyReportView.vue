@@ -19,7 +19,7 @@
       {{ formatDisplayDate(selectedDate) }}
     </div>
 
-    <!-- Core Metrics -->
+    <!-- {{ t('CoreMetrics') }} -->
     <div class="metrics-grid">
       <div class="metric-card highlight">
         <div class="metric-label">{{ t('totalRevenue') }}</div>
@@ -70,9 +70,9 @@
       </div>
     </div>
 
-    <!-- Detailed Data -->
+    <!-- {{ t('DetailedData') }} -->
     <div class="detail-grid">
-      <!-- Payment Methods -->
+      <!-- {{ t('PaymentMethods') }} -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('paymentMethods') }}</h3>
@@ -88,7 +88,7 @@
         </div>
       </div>
 
-      <!-- Time Distribution -->
+      <!-- {{ t('TimeDistribution') }} -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('hourlyDistribution') }}</h3>
@@ -104,7 +104,7 @@
         </div>
       </div>
 
-      <!-- Table Usage -->
+      <!-- {{ t('TableUsage') }} -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('tableUsage') }}</h3>
@@ -124,7 +124,7 @@
         </el-table>
       </div>
 
-      <!-- Expense Details -->
+      <!-- {{ t('ExpenseDetails') }} -->
       <div class="detail-card">
         <div class="card-header">
           <h3>{{ t('expenses') }}</h3>
@@ -147,7 +147,7 @@
       </div>
     </div>
 
-    <!-- Order Details -->
+    <!-- {{ t('OrderDetails') }} -->
     <div class="orders-section">
       <div class="section-header">
         <h3>{{ t('orderDetails') }}</h3>

@@ -80,7 +80,7 @@
       </el-table>
     </div>
 
-    <!-- Detail Dialog -->
+    <!-- {{ t('DetailDialog') }} -->
     <el-dialog v-model="showDetail" :title="t('salaryDetail')" width="600px">
       <template v-if="selectedStaff">
         <el-descriptions :column="2" border>

@@ -95,7 +95,7 @@
     <!-- Open Table Dialog - Full Size -->
     <el-dialog v-model="openDlg" :title="openDlgTitle" width="720px" :close-on-click-modal="false" class="open-table-dialog">
       <div class="open-form" v-if="sel">
-        <!-- Table Info Card -->
+        <!-- {{ t('TableInfoCard') }} -->
         <div class="table-hero">
           <div class="hero-icon" :class="sel.is_private ? 'private' : 'hall'">
             <el-icon><component :is="sel.is_private ? 'House' : 'Grid'" /></el-icon>
@@ -109,7 +109,7 @@
           </el-tag>
         </div>
 
-        <!-- Customer Type Switch -->
+        <!-- {{ t('CustomerTypeSwitch') }} -->
         <div class="customer-type-section">
           <div class="section-title">{{ t('member') }}/{{ t('walkIn') }}</div>
           <div class="customer-tabs">
@@ -124,7 +124,7 @@
           </div>
         </div>
 
-        <!-- Member Search Area -->
+        <!-- {{ t('MemberSearchArea') }} -->
         <div v-if="customerType === 'member'" class="member-section">
           <div class="section-title">{{ t('searchMember') }}</div>
           <el-autocomplete
@@ -156,7 +156,7 @@
             </template>
           </el-autocomplete>
 
-          <!-- Selected Member Card -->
+          <!-- {{ t('SelectedMemberCard') }} -->
           <div v-if="selectedMember" class="selected-member-card">
             <div class="member-info-left">
               <el-avatar :size="48" style="background: var(--accent-success);">{{ selectedMember.name?.charAt(0) }}</el-avatar>
@@ -176,7 +176,7 @@
           </div>
         </div>
 
-        <!-- Walk-in Customer Area -->
+        <!-- {{ t('WalkinCustomerArea') }} -->
         <div v-else class="walkin-section">
           <div class="section-title">{{ t('walkInInfo') }}</div>
           <div class="walkin-form">
@@ -220,7 +220,7 @@
           </div>
         </div>
 
-        <!-- Cost Preview -->
+        <!-- {{ t('CostPreview') }} -->
         <div class="cost-preview">
           <div class="preview-title">{{ t('amount') }}</div>
           <div class="preview-content">
@@ -248,7 +248,7 @@
       </template>
     </el-dialog>
 
-    <!-- Checkout Dialog -->
+    <!-- {{ t('CheckoutDialog') }} -->
     <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">
@@ -336,7 +336,7 @@
       </template>
     </el-dialog>
 
-    <!-- Cancel Order Dialog -->
+    <!-- {{ t('CancelOrderDialog') }} -->
     <el-dialog v-model="cancelDlg" :title="t('cancelOrder')" width="420px">
       <div style="display:flex;flex-direction:column;gap:12px;" v-if="preview">
         <div style="padding:12px;background:var(--bg-primary);border-radius:8px;">
@@ -366,7 +366,7 @@
       </template>
     </el-dialog>
 
-    <!-- Receipt Preview Dialog -->
+    <!-- {{ t('ReceiptPreviewDialog') }} -->
     <el-dialog v-model="showReceiptPreview" :title="t('receipt')" width="360px">
       <div class="receipt-content" v-if="receiptPreview">
         <div style="text-align:center;font-weight:bold;font-size:16px;margin-bottom:8px;">{{ t('billiardHall') }}</div>

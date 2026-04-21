@@ -61,7 +61,7 @@
       </div>
     </div>
 
-    <!-- Print Settings Dialog -->
+    <!-- {{ t('PrintSettingsDialog') }} -->
     <el-dialog v-model="showPrinterDlg" :title="t('printerConfig')" width="800px" class="settings-dialog">
       <div class="dialog-content">
         <div class="printer-header">
@@ -124,7 +124,7 @@
       </template>
     </el-dialog>
 
-    <!-- Add/Edit Printer Dialog -->
+    <!-- {{ t('AddEditPrinterDialog') }} -->
     <el-dialog v-model="showPrinterForm" :title="editPrinterTarget ? t('editPrinter') : t('addPrinter')" width="500px" class="settings-dialog">
       <div class="dialog-content">
         <div class="form-item">
@@ -179,7 +179,7 @@
       </template>
     </el-dialog>
 
-    <!-- User Management Dialog -->
+    <!-- {{ t('UserManagementDialog') }} -->
     <el-dialog v-model="showUserDlg" :title="t('userPermission')" width="700px" class="settings-dialog">
       <div class="dialog-content">
         <div class="section-header">
@@ -210,7 +210,7 @@
       </template>
     </el-dialog>
 
-    <!-- Add/Edit User Dialog -->
+    <!-- {{ t('AddEditUserDialog') }} -->
     <el-dialog v-model="showUserForm" :title="editUserTarget ? t('edit') : t('add')" width="400px" class="settings-dialog">
       <div class="dialog-content">
         <div class="form-item">
@@ -236,7 +236,7 @@
       </template>
     </el-dialog>
 
-    <!-- Backup/Restore Dialog -->
+    <!-- {{ t('BackupRestoreDialog') }} -->
     <el-dialog v-model="showBackupDlg" :title="t('backupRestore')" width="480px" class="settings-dialog">
       <div class="dialog-content">
         <div class="backup-card" @click="doBackup">

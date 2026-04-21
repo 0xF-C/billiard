@@ -80,7 +80,7 @@
       class="open-table-dialog"
     >
       <div class="open-form" v-if="sel">
-        <!-- Table Info Card -->
+        <!-- {{ t('TableInfoCard') }} -->
         <div class="table-hero">
           <div class="hero-icon" :class="sel.is_private ? 'private' : 'hall'">
             <el-icon><component :is="sel.is_private ? 'House' : 'Grid'" /></el-icon>
@@ -94,7 +94,7 @@
           </el-tag>
         </div>
 
-        <!-- Customer Type Switch -->
+        <!-- {{ t('CustomerTypeSwitch') }} -->
         <div class="customer-type-section">
           <div class="section-title">{{ t('member') }}/{{ t('walkIn') }}</div>
           <div class="customer-tabs">
@@ -109,7 +109,7 @@
           </div>
         </div>
 
-        <!-- Member Search Area -->
+        <!-- {{ t('MemberSearchArea') }} -->
         <div v-if="customerType === 'member'" class="member-section">
           <div class="section-title">{{ t('searchMember') }}</div>
           <el-autocomplete
@@ -147,7 +147,7 @@
             </template>
           </el-autocomplete>
 
-          <!-- Selected Member Card -->
+          <!-- {{ t('SelectedMemberCard') }} -->
           <div v-if="selectedMember" class="selected-member-card">
             <div class="member-info-left">
               <el-avatar :size="48" style="background: var(--accent-success);">
@@ -173,7 +173,7 @@
           </div>
         </div>
 
-        <!-- Walk-in Customer Area -->
+        <!-- {{ t('WalkinCustomerArea') }} -->
         <div v-else class="walkin-section">
           <div class="section-title">{{ t('walkInInfo') }}</div>
           <div class="walkin-form">
@@ -222,7 +222,7 @@
           </div>
         </div>
 
-        <!-- Package Selection -->
+        <!-- {{ t('PackageSelection') }} -->
         <div class="package-section">
           <div class="section-title">{{ t('selectPackage') }}</div>
           <div class="package-options">
@@ -250,7 +250,7 @@
           </div>
         </div>
 
-        <!-- Cost Preview -->
+        <!-- {{ t('CostPreview') }} -->
         <div class="cost-preview">
           <div class="preview-title">{{ t('amount') }}</div>
           <div class="preview-content">
@@ -285,7 +285,7 @@
       </template>
     </el-dialog>
 
-    <!-- Checkout Dialog -->
+    <!-- {{ t('CheckoutDialog') }} -->
     <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">

@@ -76,7 +76,7 @@
       </el-table>
     </div>
 
-    <!-- Add Staff Dialog -->
+    <!-- {{ t('AddStaffDialog') }} -->
     <el-dialog v-model="showAdd" :title="t('addStaff')" width="600px">
       <el-form :model="staffForm" label-width="100px">
         <el-row :gutter="20">
@@ -142,7 +142,7 @@
       </template>
     </el-dialog>
 
-    <!-- Detail Dialog -->
+    <!-- {{ t('DetailDialog') }} -->
     <el-dialog v-model="showDetail" :title="t('staffDetail')" width="600px">
       <el-descriptions :column="2" border v-if="selectedStaff">
         <el-descriptions-item :label="t('name')">{{ selectedStaff.name }}</el-descriptions-item>

@@ -67,7 +67,7 @@
       </div>
     </div>
 
-    <!-- Add/Edit Dialog -->
+    <!-- {{ t('AddEditDialog') }} -->
     <el-dialog v-model="formDlg" :title="editTarget ? t('editTable') : t('addTable')" width="520px" :close-on-click-modal="false" class="table-form-dialog">
       <div class="form-body">
         <div class="form-icon-wrap">
@@ -106,7 +106,7 @@
       </template>
     </el-dialog>
 
-    <!-- QR Dialog -->
+    <!-- {{ t('QRDialog') }} -->
     <el-dialog v-model="qrDlg" :title="qrTable ? qrTable.name + ' - ' + t('scanQR') : ''" width="360px" :close-on-click-modal="false">
       <div class="qr-content" v-if="qrTable">
         <div class="qr-wrapper">

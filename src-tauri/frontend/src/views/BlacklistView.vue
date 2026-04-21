@@ -105,7 +105,7 @@
       </el-table>
     </div>
 
-    <!-- Add Blacklist Dialog -->
+    <!-- {{ t('AddBlacklistDialog') }} -->
     <el-dialog v-model="showAdd" :title="t('addBlacklist')" width="500px">
       <el-form :model="addForm" :rules="addRules" ref="addFormRef" label-width="100px">
         <el-form-item :label="t('phone')" prop="phone">
@@ -150,7 +150,7 @@
       </template>
     </el-dialog>
 
-    <!-- Detail Dialog -->
+    <!-- {{ t('DetailDialog') }} -->
     <el-dialog v-model="showDetail" :title="t('blacklistDetail')" width="500px">
       <el-descriptions :column="1" border>
         <el-descriptions-item :label="t('name')">{{ detailItem?.name }}</el-descriptions-item>

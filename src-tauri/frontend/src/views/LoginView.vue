@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <!-- First login setup dialog -->
+    <!-- {{ t('FirstLoginSetupDialog') }} -->
     <el-dialog
       v-model="showSetup"
       :title="t('firstLoginSetup')"
@@ -103,7 +103,7 @@
       </template>
     </el-dialog>
 
-    <!-- DB path dialog -->
+    <!-- {{ t('DBPathDialog') }} -->
     <el-dialog
       v-model="showDbPaths"
       :title="t('dbPathLabel')"
