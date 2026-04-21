@@ -33,7 +33,7 @@ fn init_font() -> Result<FontRef<'static>, String> {
             if let Ok(font) = FontRef::try_from_slice(leaked) {
                 info!("Loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
-                *lock = Some((leaked.to_vec(), font));
+                *lock = Some((leaked.to_vec(), font.clone()));
                 return Ok(font);
             }
         }
