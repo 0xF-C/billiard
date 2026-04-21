@@ -48,10 +48,10 @@
             <span class="setting-name">{{ t('orderRetention') }}</span>
           </div>
           <el-select v-model="retention.orders">
-            <el-option label=t('3months') :value="3" />
-            <el-option label=t('6months') :value="6" />
-            <el-option label=t('1year') :value="12" />
-            <el-option label=t('permanent') :value="999" />
+            <el-option :label="t('3months')" :value="3" />
+            <el-option :label="t('6months')" :value="6" />
+            <el-option :label="t('1year')" :value="12" />
+            <el-option :label="t('permanent')" :value="999" />
           </el-select>
         </div>
         <div class="setting-row">
@@ -59,10 +59,10 @@
             <span class="setting-name">{{ t('logRetention') }}</span>
           </div>
           <el-select v-model="retention.logs">
-            <el-option label=t('7days') :value="0.25" />
-            <el-option label=t('30days') :value="1" />
-            <el-option label=t('3months') :value="3" />
-            <el-option label=t('6months') :value="6" />
+            <el-option :label="t('7days')" :value="0.25" />
+            <el-option :label="t('30days')" :value="1" />
+            <el-option :label="t('3months')" :value="3" />
+            <el-option :label="t('6months')" :value="6" />
           </el-select>
         </div>
       </div>

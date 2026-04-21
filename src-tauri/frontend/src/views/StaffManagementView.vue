@@ -90,11 +90,11 @@
       <div class="section">
         <h2 class="section-title">{{ t('monthAttendanceStats') }}</h2>
         <el-table :data="attendanceStats" stripe style="width: 100%">
-          <el-table-column prop="staffName" label=t('staffName') width="120" />
-          <el-table-column prop="position" label=t('position') width="100" />
-          <el-table-column prop="workDays" label=t('workDays') width="100" />
-          <el-table-column prop="leaveDays" label=t('leaveDays') width="100" />
-          <el-table-column prop="attendance" label=t('attendanceRate') width="100">
+          <el-table-column prop="staffName" :label="t('staffName')" width="120" />
+          <el-table-column prop="position" :label="t('position')" width="100" />
+          <el-table-column prop="workDays" :label="t('workDays')" width="100" />
+          <el-table-column prop="leaveDays" :label="t('leaveDays')" width="100" />
+          <el-table-column prop="attendance" :label="t('attendanceRate')" width="100">
             <template #default="{ row }">
               <el-progress :percentage="row.attendance" />
             </template>

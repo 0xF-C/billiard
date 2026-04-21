@@ -92,13 +92,13 @@
         <h2 class="section-title">{{ t('recentRecharges') }}</h2>
         <el-table :data="recentRecharges" stripe style="width: 100%">
           <el-table-column prop="memberName" label="会员名称" width="150" />
-          <el-table-column prop="amount" label=t('rechargeAmount') width="120">
+          <el-table-column prop="amount" :label="t('rechargeAmount')" width="120">
             <template #default="{ row }">
               <span style="color: var(--accent-primary)">¥{{ row.amount }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="bonus" label=t('bonusAmount') width="120" />
-          <el-table-column prop="time" label=t('rechargeTime') width="180" />
+          <el-table-column prop="bonus" :label="t('bonusAmount')" width="120" />
+          <el-table-column prop="time" :label="t('rechargeTime')" width="180" />
           <el-table-column label="操作" width="100">
             <template #default>
               <el-button link type="primary" size="small">{{ t('detail') }}</el-button>

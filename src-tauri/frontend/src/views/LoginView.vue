@@ -106,7 +106,7 @@
     <!-- DB path dialog -->
     <el-dialog
       v-model="showDbPaths"
-      title=t('dbPathLabel')
+      :title="t('dbPathLabel')"
       width="500px"
       class="db-path-dialog"
     >

@@ -260,22 +260,22 @@ const showAddGift = ref(false)
 
 const getLevelColor = (level) => {
   const colors = {
-    t('normalMember'): '#909399',
-    t('silverMember'): '#909399',
-    t('goldMember'): '#e6a23c',
+    [t('normalMember')]: '#909399',
+    [t('silverMember')]: '#909399',
+    [t('goldMember')]: '#e6a23c',
     '白金会员': '#409eff',
-    t('diamondMember'): '#a855f7',
+    [t('diamondMember')]: '#a855f7',
   }
   return colors[level] || '#909399'
 }
 
 const getLevelType = (level) => {
   const types = {
-    t('normalMember'): 'info',
-    t('silverMember'): 'info',
-    t('goldMember'): 'warning',
+    [t('normalMember')]: 'info',
+    [t('silverMember')]: 'info',
+    [t('goldMember')]: 'warning',
     '白金会员': 'primary',
-    t('diamondMember'): 'danger',
+    [t('diamondMember')]: 'danger',
   }
   return types[level] || 'info'
 }
