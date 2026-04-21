@@ -402,18 +402,18 @@ $errorMsg = ''
 try {{
     # 使用 Print 命令行工具
     $printExe = Join-Path $env:SystemRoot 'System32\spool\tools\print.exe'
-    if (Test-Path $printExe) {{}}
+    if (Test-Path $printExe) {{
         $process = Start-Process -FilePath $printExe -ArgumentList "/D:$printerName `"$tempFile`"" -Wait -PassThru -NoNewWindow
-        if ($process.ExitCode -eq 0) {{}}
+        if ($process.ExitCode -eq 0) {{
             $success = $true
         }}
     }}
     
     # 如果print.exe不可用，尝试直接复制文件到打印机端口
-    if (-not $success) {{}}
+    if (-not $success) {{
         # 获取打印机的实际端口
         $port = (Get-Printer -Name $printerName -ErrorAction SilentlyContinue).PortName
-        if ($port -and ($port -match '^(USB\d+|LPT\d+)')) {{}}
+        if ($port -and ($port -match '^(USB\d+|LPT\d+)')) {{
             $portPath = "\\.\$port"
             Copy-Item -Path $tempFile -Destination $portPath -Force
             $success = $true
@@ -421,7 +421,8 @@ try {{
     }}
     
     # 最后尝试使用 Raw print API
-    if (-not $success) {{}}
+    if (-not $success) {{
+
         Add-Type -AssemblyName System.Drawing.Printing
         $srv = New-Object System.Drawing.Printing.PrintServer
         $queue = New-Object System.Drawing.Printing.PrintQueue($srv, $printerName, [System.Drawing.Printing.PrintSystemQueueOptions.Raw)
@@ -462,13 +463,13 @@ try {{
 "@
         
         $hPrinter = [RawPrinterHelper]::OpenPrinter($printerName, [IntPtr]::Zero, [IntPtr]::Zero)
-        if ($hPrinter -ne [IntPtr]::Zero) {{}}
+        if ($hPrinter -ne [IntPtr]::Zero) {{
             $docInfo = New-Object RawPrinterHelper+DOCINFO
             $docInfo.pDocName = "Billiard"
             $docInfo.pOutputFile = $null
             $docInfo.pDatatype = "RAW"
             
-            if ([RawPrinterHelper]::StartDocPrinter($hPrinter, 1, [ref]$docInfo)) {{}}
+            if ([RawPrinterHelper]::StartDocPrinter($hPrinter, 1, [ref]$docInfo)) {{
                 $written = 0
                 $ok = [RawPrinterHelper]::WritePrinter($hPrinter, $ptr, $bytes.Length, [ref]$written)
                 [RawPrinterHelper]::EndDocPrinter($hPrinter) | Out-Null
