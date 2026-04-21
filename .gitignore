@@ -1,0 +1,12 @@
+target/
+src-tauri/target/
+.DS_Store
+*.db
+*.log
+__pycache__/
+*.pyc
+node_modules/
+dist/
+*.lock
+bak/
+*.zip

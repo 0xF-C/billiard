@@ -1,0 +1,159 @@
+name: Build Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install deps
+        run: npm install
+
+      - name: Install frontend deps
+        run: cd src-tauri/frontend && npm install
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --locked
+
+      - name: Build
+        run: cargo tauri build --verbose
+        working-directory: src-tauri
+        env:
+          CI: true
+
+      - name: Show output
+        run: |
+          echo "=== target/release ==="
+          ls -la target/release/billiard-manager 2>/dev/null || echo "no binary"
+          echo "=== bundle dir ==="
+          find target/release/bundle -type f 2>/dev/null || echo "no bundle"
+        working-directory: src-tauri
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-bundle
+          path: src-tauri/target/release/bundle/
+          retention-days: 7
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install deps
+        run: npm install
+
+      - name: Install frontend deps
+        run: cd src-tauri/frontend && npm install
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --locked
+
+      - name: Build
+        run: cargo tauri build --verbose
+        working-directory: src-tauri
+        env:
+          CI: true
+
+      - name: Show output
+        run: |
+          echo "=== target/release ==="
+          ls -la target/release/billiard-manager.exe 2>/dev/null || echo "no binary"
+          echo "=== bundle dir ==="
+          find target/release/bundle -type f 2>/dev/null || echo "no bundle"
+        working-directory: src-tauri
+        shell: bash
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-bundle
+          path: src-tauri/target/release/bundle/
+          retention-days: 7
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            libssl-dev
+
+      - name: Install deps
+        run: npm install
+
+      - name: Install frontend deps
+        run: cd src-tauri/frontend && npm install
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --locked
+
+      - name: Build
+        run: cargo tauri build --verbose
+        working-directory: src-tauri
+        env:
+          CI: true
+
+      - name: Show output
+        run: |
+          echo "=== target/release ==="
+          ls -la target/release/billiard-manager 2>/dev/null || echo "no binary"
+          echo "=== bundle dir ==="
+          find target/release/bundle -type f 2>/dev/null || echo "no bundle"
+        working-directory: src-tauri
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-bundle
+          path: src-tauri/target/release/bundle/
+          retention-days: 7

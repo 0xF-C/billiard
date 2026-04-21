@@ -1,0 +1,540 @@
+:root {
+  --bg-primary: #0b0f16;
+  --bg-secondary: #111820;
+  --bg-tertiary: #19202c;
+  --bg-elevated: #252d3a;
+  --bg-hover: rgba(88,166,255,0.06);
+  --bg-active: rgba(88,166,255,0.12);
+
+  --border-default: #252d3a;
+  --border-muted: #19202c;
+  --border-accent: #58a6ff;
+
+  --text-primary: #edf1f7;
+  --text-secondary: #9ba7b6;
+  --text-tertiary: #6a7685;
+  --text-link: #58a6ff;
+
+  --accent-primary: #58a6ff;
+  --accent-primary-hover: #79b8ff;
+  --accent-success: #3fb950;
+  --accent-warning: #e5a530;
+  --accent-danger: #f85149;
+  --accent-purple: #a371f7;
+
+  --gradient-gold: linear-gradient(135deg, #ffd700, #f0a500);
+  --gradient-green: linear-gradient(135deg, #238636, #2ea043);
+  --gradient-red: linear-gradient(135deg, #da3633, #f85149);
+  --gradient-blue: linear-gradient(135deg, #1f6feb, #388bfd);
+  --gradient-card: linear-gradient(160deg, rgba(88,166,255,0.03), transparent 60%);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 0 1px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.45), 0 0 1px rgba(0,0,0,0.15);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.55), 0 0 1px rgba(0,0,0,0.1);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 30px rgba(88,166,255,0.1);
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.2), 0 0 1px rgba(88,166,255,0.03);
+  --shadow-card-hover: 0 8px 24px rgba(0,0,0,0.35), 0 0 12px rgba(88,166,255,0.06);
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
+
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+::selection { background: rgba(88,166,255,0.25); color: var(--text-primary); }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-accent); }
+
+#center {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+  padding: 32px 20px 24px;
+}
+
+#next-steps {
+  display: flex;
+  border-top: 1px solid var(--border-default);
+  text-align: left;
+}
+
+#next-steps > div {
+  flex: 1 1 0;
+  padding: 32px;
+}
+
+#next-steps .icon {
+  margin-bottom: 16px;
+  width: 22px;
+  height: 22px;
+}
+
+@media (max-width: 1024px) {
+  #next-steps {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+#docs {
+  border-right: 1px solid var(--border-default);
+}
+
+@media (max-width: 1024px) {
+  #docs {
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
+  }
+}
+
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+  margin: 32px 0 0;
+}
+
+#next-steps ul .logo {
+  height: 18px;
+}
+
+#next-steps ul a {
+  color: var(--text-primary);
+  font-size: 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  display: flex;
+  padding: 6px 12px;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: box-shadow var(--transition-normal);
+}
+
+#next-steps ul a:hover {
+  box-shadow: var(--shadow-md);
+}
+
+#next-steps ul a .button-icon {
+  height: 18px;
+  width: 18px;
+}
+
+@media (max-width: 1024px) {
+  #next-steps ul {
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  #next-steps ul li {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  #next-steps ul a {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+}
+
+#social .button-icon {
+  filter: invert(1) brightness(2);
+}
+
+#spacer {
+  height: 88px;
+  border-top: 1px solid var(--border-default);
+}
+
+@media (max-width: 1024px) {
+  #spacer {
+    height: 48px;
+  }
+}
+
+.ticks {
+  position: relative;
+  width: 100%;
+}
+
+.ticks::before,
+.ticks::after {
+  content: '';
+  position: absolute;
+  top: -4.5px;
+  border: 5px solid transparent;
+}
+
+.ticks::before {
+  left: 0;
+  border-left-color: var(--border-default);
+}
+
+.ticks::after {
+  right: 0;
+  border-right-color: var(--border-default);
+}
+
+/* ===== Element Plus CSS Variable Overrides ===== */
+/* Force all Element Plus internal variables to dark theme */
+:root {
+  --el-bg-color: var(--bg-secondary) !important;
+  --el-bg-color-page: var(--bg-primary) !important;
+  --el-bg-color-overlay: var(--bg-elevated) !important;
+  --el-text-color-primary: var(--text-primary) !important;
+  --el-text-color-regular: var(--text-secondary) !important;
+  --el-text-color-secondary: var(--text-tertiary) !important;
+  --el-text-color-placeholder: var(--text-tertiary) !important;
+  --el-border-color: var(--border-default) !important;
+  --el-border-color-light: var(--border-muted) !important;
+  --el-border-color-lighter: var(--border-default) !important;
+  --el-border-color-extra-light: var(--border-default) !important;
+  --el-fill-color: var(--bg-tertiary) !important;
+  --el-fill-color-light: var(--bg-tertiary) !important;
+  --el-fill-color-lighter: var(--bg-tertiary) !important;
+  --el-fill-color-extra-light: var(--bg-tertiary) !important;
+  --el-fill-color-blank: var(--bg-tertiary) !important;
+  --el-fill-color-dark: var(--bg-elevated) !important;
+  --el-mask-color: rgba(11,15,22,0.65) !important;
+  --el-disabled-bg-color: var(--bg-tertiary) !important;
+  --el-disabled-border-color: var(--border-default) !important;
+  --el-input-bg-color: var(--bg-tertiary) !important;
+  --el-input-border-color: var(--border-default) !important;
+  --el-input-hover-border-color: var(--accent-primary) !important;
+  --el-input-focus-border-color: var(--accent-primary) !important;
+  --el-input-text-color: var(--text-primary) !important;
+  --el-input-icon-color: var(--text-tertiary) !important;
+  --el-input-placeholder-color: var(--text-tertiary) !important;
+  --el-select-bg-color: var(--bg-tertiary) !important;
+  --el-select-border-color-hover: var(--accent-primary) !important;
+  --el-select-dropdown-bg-color: var(--bg-elevated) !important;
+  --el-select-dropdown-border-color: var(--border-default) !important;
+  --el-select-option-hover-background: var(--bg-hover) !important;
+  --el-select-option-selected-background: var(--bg-active) !important;
+  --el-select-option-selected-text-color: var(--accent-primary) !important;
+  --el-dialog-bg-color: var(--bg-secondary) !important;
+  --el-dialog-box-shadow: var(--shadow-lg) !important;
+  --el-dialog-title-color: var(--text-primary) !important;
+  --el-dialog-content-color: var(--text-primary) !important;
+  --el-table-bg-color: transparent !important;
+  --el-table-tr-bg-color: transparent !important;
+  --el-table-header-bg-color: var(--bg-tertiary) !important;
+  --el-table-row-hover-bg-color: var(--bg-hover) !important;
+  --el-table-border-color: var(--border-default) !important;
+  --el-table-border: 1px solid var(--border-default) !important;
+  --el-table-text-color: var(--text-primary) !important;
+  --el-table-header-text-color: var(--text-secondary) !important;
+  --el-table-expanded-cell-bg-color: transparent !important;
+  --el-table-fixed-box-shadow: var(--shadow-md) !important;
+  --el-messagebox-bg-color: var(--bg-secondary) !important;
+  --el-messagebox-title-color: var(--text-primary) !important;
+  --el-messagebox-content-color: var(--text-secondary) !important;
+  --el-messagebox-border-color: var(--border-default) !important;
+  --el-popover-bg-color: var(--bg-elevated) !important;
+  --el-popover-border-color: var(--border-default) !important;
+  --el-popover-title-color: var(--text-primary) !important;
+  --el-popover-font-color: var(--text-primary) !important;
+  --el-dropdown-menuItem-hover-color: var(--accent-primary) !important;
+  --el-dropdown-menuItem-hover-fill: var(--bg-hover) !important;
+  --el-dropdown-menuBgColor: var(--bg-elevated) !important;
+  --el-menu-bg-color: var(--bg-secondary) !important;
+  --el-menu-hover-bg-color: var(--bg-hover) !important;
+  --el-menu-active-color: var(--accent-primary) !important;
+  --el-menu-text-color: var(--text-secondary) !important;
+  --el-menu-hover-text-color: var(--text-primary) !important;
+  --el-menu-border-color: var(--border-default) !important;
+  --el-date-editor-bg-color: var(--bg-tertiary) !important;
+  --el-picker-bg-color: var(--bg-secondary) !important;
+  --el-autocomplete-suggestion-bg-color: var(--bg-elevated) !important;
+  --el-autocomplete-suggestion-border-color: var(--border-default) !important;
+  --el-card-bg-color: var(--bg-secondary) !important;
+  --el-alert-bg-color: var(--bg-tertiary) !important;
+  --el-loading-spinner-color: var(--accent-primary) !important;
+  --el-loading-background-color: rgba(11,15,22,0.75) !important;
+  --el-tooltip-bg-color: var(--bg-elevated) !important;
+  --el-tooltip-text-color: var(--text-primary) !important;
+  --el-tooltip-border-color: var(--border-default) !important;
+  --el-pagination-bg-color: var(--bg-tertiary) !important;
+  --el-pagination-text-color: var(--text-secondary) !important;
+  --el-pagination-hover-color: var(--accent-primary) !important;
+  --el-pagination-button-bg-color: var(--bg-tertiary) !important;
+  --el-pagination-button-disabled-bg-color: var(--bg-tertiary) !important;
+  --el-pagination-button-disabled-text-color: var(--text-tertiary) !important;
+  --el-input-number-disabled-text-color: var(--text-tertiary) !important;
+  --el-input-number-hover-border-color: var(--accent-primary) !important;
+  --el-form-label-font-color: var(--text-secondary) !important;
+  --el-switch-on-color: var(--accent-primary) !important;
+  --el-switch-off-color: var(--bg-elevated) !important;
+  --el-radio-button-checked-bg-color: var(--accent-primary) !important;
+  --el-radio-button-bg-color: var(--bg-tertiary) !important;
+  --el-radio-button-text-color: var(--text-secondary) !important;
+  --el-radio-button-checked-text-color: #fff !important;
+  --el-checkbox-checked-bg-color: var(--accent-primary) !important;
+  --el-checkbox-bg-color: var(--bg-tertiary) !important;
+  --el-checkbox-checked-text-color: var(--text-primary) !important;
+  --el-checkbox-input-border-color-hover: var(--accent-primary) !important;
+  --el-tag-bg-color: var(--bg-tertiary) !important;
+  --el-tag-border-color: var(--border-default) !important;
+  --el-tag-text-color: var(--text-primary) !important;
+  --el-button-text-color: var(--text-primary) !important;
+  --el-button-hover-text-color: var(--accent-primary) !important;
+  --el-button-disabled-text-color: var(--text-tertiary) !important;
+  --el-button-disabled-bg-color: var(--bg-tertiary) !important;
+  --el-button-disabled-border-color: var(--border-default) !important;
+  --el-message-bg-color: var(--bg-elevated) !important;
+  --el-message-border-color: var(--border-default) !important;
+  --el-message-text-color: var(--text-primary) !important;
+  --el-overlay-color: rgba(11,15,22,0.65) !important;
+  --el-overlay-color-light: rgba(11,15,22,0.45) !important;
+}
+
+/* ===== Nuclear Override: Force ALL Element Plus components to dark theme ===== */
+/* This catches anything the targeted overrides miss */
+.el-table .el-table__body-wrapper,
+.el-table .el-table__header-wrapper,
+.el-table .el-table__fixed,
+.el-table .el-table__fixed-right,
+.el-table .el-table__body tr,
+.el-table .el-table__header tr,
+.el-form-item__content .el-input,
+.el-form-item__content .el-select,
+.el-form-item__content .el-textarea,
+.el-form-item__content .el-input-number,
+.el-form-item__content .el-date-editor,
+.el-card__body,
+.el-dialog__body,
+.el-popover,
+.el-dropdown-menu,
+.el-table__empty-block {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.el-table__inner-wrapper {
+  background-color: transparent !important;
+}
+
+.el-table--border::after,
+.el-table--border::before,
+.el-table__inner-wrapper::before {
+  background-color: var(--border-default) !important;
+}
+
+.el-table--border .el-table__cell {
+  border-color: var(--border-default) !important;
+}
+
+/* Override scoped styles in views that force white backgrounds */
+[class*="-page"] .el-input__wrapper,
+[class*="-page"] .el-textarea__inner,
+[class*="-page"] .el-select__wrapper,
+[class*="-page"] .el-input-number,
+[class*="-page"] .el-date-editor .el-input__wrapper,
+.view .el-input__wrapper,
+.view .el-textarea__inner,
+.view .el-select__wrapper {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-default) !important;
+}
+
+[class*="-page"] .el-form-item__label,
+.view .el-form-item__label {
+  color: var(--text-secondary) !important;
+}
+
+/* Force table cell backgrounds everywhere - including inside scoped styles */
+:deep(.el-table__cell),
+[class*="-page"] .el-table__cell,
+.view .el-table__cell,
+.el-table .el-table__cell {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-default) !important;
+}
+
+.el-table th.el-table__cell.is-leaf {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.el-table .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: rgba(88,166,255,0.04) !important;
+}
+
+.el-table .el-table__body tr.el-table__row--striped td.el-table__cell.el-table-fixed-column--right,
+.el-table__fixed-right .el-table__body tr.el-table__row--striped .el-table__cell {
+  background-color: rgba(88,166,255,0.06) !important;
+}
+
+/* Force el-select dropdown items to be dark */
+.el-select-dropdown__item {
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+}
+
+.el-select-dropdown__item.is-hovering {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-select-dropdown__item.is-selected {
+  color: var(--accent-primary) !important;
+}
+
+/* Force el-radio-button inside forms to be dark */
+.el-radio-button__inner {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* ===== Number Input (InputNumber) Styling ===== */
+
+/* ===== Dialog Styling ===== */
+.el-dialog {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-lg) !important;
+}
+
+.el-dialog__title {
+  color: var(--text-primary) !important;
+}
+
+.el-dialog__headerbtn .el-dialog__close {
+  color: var(--text-secondary) !important;
+}
+
+.el-dialog__headerbtn .el-dialog__close:hover {
+  color: var(--accent-primary) !important;
+}
+
+.el-dialog__body {
+  color: var(--text-primary) !important;
+}
+
+.el-dialog__footer {
+  border-top: 1px solid var(--border-default) !important;
+}
+
+/* ===== Table Styling ===== */
+.el-table {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  --el-table-bg-color: transparent !important;
+  --el-table-tr-bg-color: transparent !important;
+  --el-table-header-bg-color: var(--bg-tertiary) !important;
+  --el-table-row-hover-bg-color: var(--bg-hover) !important;
+  --el-table-border-color: var(--border-default) !important;
+  --el-table-text-color: var(--text-primary) !important;
+  --el-table-header-text-color: var(--text-secondary) !important;
+  --el-table-current-row-bg-color: var(--bg-hover) !important;
+}
+
+.el-table th.el-table__cell {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-default) !important;
+}
+
+.el-table td.el-table__cell {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-default) !important;
+}
+
+.el-table tr {
+  background-color: transparent !important;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: rgba(88,166,255,0.04) !important;
+}
+
+.el-table__body tr:hover > td.el-table__cell {
+  background-color: var(--bg-hover) !important;
+}
+
+.el-table__empty-block {
+  background-color: transparent !important;
+}
+
+/* ===== Card / Form Item ===== */
+.el-form-item__label {
+  color: var(--text-secondary) !important;
+}
+
+.el-form-item__content {
+  color: var(--text-primary) !important;
+}
+
+/* ===== Popover / Dropdown / Menu ===== */
+.el-dropdown-menu,
+.el-popover,
+.el-popper {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-dropdown-menu__item {
+  color: var(--text-primary) !important;
+}
+
+.el-dropdown-menu__item:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+/* ===== Message ===== */
+.el-message {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ===== MessageBox Confirm Dialog ===== */
+.el-message-box {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-default) !important;
+}
+
+.el-message-box__title {
+  color: var(--text-primary) !important;
+}
+
+.el-message-box__content {
+  color: var(--text-secondary) !important;
+}
