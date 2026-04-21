@@ -46,7 +46,7 @@ fn init_font() -> Result<FontRef<'static>, String> {
 fn get_font() -> Result<FontRef<'static>, String> {
     let lock = FONT.lock().unwrap();
     lock.as_ref()
-        .map(|(_, f)| *f)
+        .map(|(_, f)| f.clone())
         .ok_or_else(|| "Font not loaded".to_string())
 }
 
