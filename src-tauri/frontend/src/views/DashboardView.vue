@@ -288,7 +288,7 @@
         </div>
       </div>
       <template #footer>
-        <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <div class="payment-btns">
           <el-button type="warning" @click="openCancelDlg" v-if="preview">
             <el-icon><CircleClose /></el-icon>
             {{ t('cancelOrder') }}
@@ -1716,6 +1716,9 @@ onUnmounted(() => { clearInterval(timer); clearInterval(realtimeTimer) })
 .close-payment-section .payment-btns .el-button--primary {
   border: 2px solid var(--accent-primary) !important;
 }
+
+.payment-btns { display: flex; gap: 12px; justify-content: flex-end; }
+.payment-btns .el-button { flex: 1; }
 
 :deep(.el-divider) { margin: 12px 0; border-color: var(--border-muted); }
 

@@ -322,7 +322,7 @@
         </div>
       </div>
       <template #footer>
-        <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <div class="payment-btns">
           <el-button type="warning" @click="openCancelDlg" v-if="preview?.status === '进行中'">
             <el-icon><CircleClose /></el-icon>
             {{ t('cancelOrder') }}
@@ -1228,6 +1228,9 @@ onMounted(() => {
 .close-payment-section .payment-label { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); }
 .close-payment-section .payment-btns { display: flex; gap: 10px; }
 .close-payment-section .payment-btns .el-button { flex: 1; }
+
+.payment-btns { display: flex; gap: 12px; justify-content: flex-end; }
+.payment-btns .el-button { flex: 1; }
 
 :deep(.el-divider) { margin: 12px 0; border-color: var(--border-muted); }
 
