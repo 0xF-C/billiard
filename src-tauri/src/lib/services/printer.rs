@@ -955,14 +955,13 @@ pub fn print_receipt(req: PrintReceiptRequest) -> PrintResult {
         return PrintResult { success: false, message: format!("打印机 '{}' 已禁用", printer.name) };
     }
 
-    let _data = generate_receipt_bytes(&req, printer.paper_width);
-
     let result = match printer.connection_type.as_str() {
         "network" => {
             #[cfg(windows)]
             { print_receipt_bitmap(&req, &printer.name) }
             #[cfg(not(windows))]
             {
+                let data = generate_receipt_bytes(&req, printer.paper_width);
                 match (&printer.ip_address, printer.port) {
                     (Some(ip), Some(port)) => send_to_network_printer(ip, port, &data),
                     _ => Err("网络打印机需要设置IP地址和端口".to_string()),
@@ -974,6 +973,7 @@ pub fn print_receipt(req: PrintReceiptRequest) -> PrintResult {
             { print_receipt_bitmap(&req, &printer.name) }
             #[cfg(not(windows))]
             {
+                let data = generate_receipt_bytes(&req, printer.paper_width);
                 match (&printer.serial_port, printer.baud_rate) {
                     (Some(serial_port), Some(baud_rate)) => send_to_serial_printer(serial_port, baud_rate, &data),
                     _ => Err("串口打印机需要设置串口号和波特率".to_string()),
@@ -984,7 +984,10 @@ pub fn print_receipt(req: PrintReceiptRequest) -> PrintResult {
             #[cfg(windows)]
             { print_receipt_bitmap(&req, &printer.name) }
             #[cfg(not(windows))]
-            { send_to_usb_printer(&data) }
+            {
+                let data = generate_receipt_bytes(&req, printer.paper_width);
+                send_to_usb_printer(&data)
+            }
         }
         other => Err(format!("不支持的连接类型: {}", other)),
     };

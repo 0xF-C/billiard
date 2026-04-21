@@ -41,9 +41,6 @@ fn init_font() -> Result<FontRef<'static>, String> {
     
     Err("未找到中文字体，请安装黑体或楷体".to_string())
 }
-    
-    Err("未找到中文字体(.ttf)。请确保系统安装了 simhei.ttf".to_string())
-}
 
 #[cfg(windows)]
 fn get_font() -> Result<FontRef<'static>, String> {
