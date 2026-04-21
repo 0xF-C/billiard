@@ -5,14 +5,13 @@ use ab_glyph::{FontRef, PxScale};
 #[cfg(windows)]
 use image::{GrayImage, Luma};
 #[cfg(windows)]
-use imageproc::drawing::draw_text_mut;
-#[cfg(windows)]
 use log::info;
 #[cfg(windows)]
 use once_cell::sync::Lazy;
 #[cfg(windows)]
 use std::sync::Mutex;
 
+#[allow(dead_code)]
 #[cfg(windows)]
 static FONT: Lazy<Mutex<Option<(Vec<u8>, FontRef<'static>)>>> = Lazy::new(|| Mutex::new(None));
 
@@ -35,19 +34,23 @@ fn init_font() -> Result<FontRef<'static>, String> {
                 info!("Loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
                 *lock = Some((leaked.to_vec(), font));
+                return Ok(font);
             }
         }
     }
     
-    init_font()
+    Err("未找到中文字体。请确保系统安装了 simhei.ttf 或 msyh.ttc。".to_string())
 }
 
 #[cfg(windows)]
 fn get_font() -> Result<FontRef<'static>, String> {
-    let lock = FONT.lock().unwrap();
-    lock.as_ref()
-        .map(|(_, f)| f.clone())
-        .ok_or_else(|| "Font not loaded".to_string())
+    {
+        let lock = FONT.lock().unwrap();
+        if let Some((_, ref font)) = *lock {
+            return Ok(font.clone());
+        }
+    }
+    init_font()
 }
 
 #[cfg(windows)]

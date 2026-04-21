@@ -372,6 +372,7 @@ pub fn list_usb_printers() -> Vec<String> {
 }
 
 /// 通过Windows直接端口写入发送原始打印数据
+#[allow(dead_code)]
 #[cfg(windows)]
 fn send_to_usb_printer(data: &[u8]) -> Result<(), String> {
     // 获取Windows第一个可用的真实打印机
@@ -516,6 +517,7 @@ if ($success) {{
 }
 
 /// 获取Windows打印机信息：名称和端口
+#[allow(dead_code)]
 #[cfg(windows)]
 fn get_windows_printer_info() -> Result<(String, String), String> {
     use std::process::Command;
