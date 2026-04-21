@@ -220,9 +220,14 @@ pub fn close_order(order_id: i64, req: CloseTableRequest) -> Result<Order, Strin
         tx.rollback().ok();
     }
     
-    // 结账成功后自动打印小票
+    // 结账成功后自动打印小票（非阻塞）
     if let Ok(ref order) = result {
-        auto_print_receipt(order);
+        let order_clone = order.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| auto_print_receipt(&order_clone))) {
+                error!("Auto-print panic: {:?}", e);
+            }
+        });
     }
     
     result

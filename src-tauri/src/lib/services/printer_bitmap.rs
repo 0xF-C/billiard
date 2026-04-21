@@ -20,7 +20,7 @@ const BITMAP_WIDTH: u32 = 384;
 
 #[cfg(windows)]
 fn init_font() -> Result<FontRef<'static>, String> {
-    // 注意: ab_glyph FontRef 不支持 .ttc (TrueType Collection)，只支持 .ttf
+    // Note: ab_glyph FontRef does not support .ttc (TrueType Collection), only .ttf
     let paths = [
         "C:\\Windows\\Fonts\\simhei.ttf",
         "C:\\Windows\\Fonts\\msyhbd.ttf",
@@ -29,23 +29,18 @@ fn init_font() -> Result<FontRef<'static>, String> {
     ];
     
     for path in &paths {
-        info!("Trying to load font from: {}", path);
         if let Ok(data) = std::fs::read(path) {
-            info!("Read {} bytes from {}", data.len(), path);
-            // Box::leak 让字体数据获得 'static 生命周期（字体常驻内存，程序退出才释放）
             let static_data: &'static [u8] = Box::leak(data.into_boxed_slice());
             if let Ok(font) = FontRef::try_from_slice(static_data) {
-                info!("Successfully loaded font from {}", path);
                 let mut lock = FONT.lock().unwrap();
                 *lock = Some((static_data.to_vec(), font.clone()));
                 return Ok(font);
-            } else {
-                info!("FontRef::try_from_slice failed for {}", path);
             }
-        } else {
-            info!("Failed to read {}", path);
         }
     }
+    
+    Err("未找到中文字体，请安装黑体或楷体".to_string())
+}
     
     Err("未找到中文字体(.ttf)。请确保系统安装了 simhei.ttf".to_string())
 }
@@ -58,6 +53,7 @@ fn get_font() -> Result<FontRef<'static>, String> {
             return Ok(font.clone());
         }
     }
+    // If not loaded, try to load without blocking
     init_font()
 }
 
