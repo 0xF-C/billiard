@@ -266,7 +266,7 @@ const translations = {
     confirmRecharge: 'تولۇقلاشنى جەزىملەشتۈرۈش',
     cancel: 'بىكار قىلىش',
     confirm: 'جەزىملەشتۈرۈش',
-    confirmClose: 'تاقاشنى جەزىملەشتۈرۈش',
+    confirmClose: 'تاقاش',
     save: 'ساقلاش',
     delete: 'ئۆچۈرۈش',
     edit: 'تەھرىرلەش',
