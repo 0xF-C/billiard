@@ -474,9 +474,9 @@ const showHistory = async (member) => {
   historyDlg.value = true
   historyLoading.value = true
   try {
-    const res = await getMemberBalanceLogs(member.id, { page: 1, per_page: 20 })
-    historyLogs.value = res.items || []
-    historyTotal.value = res.total || 0
+    const res = await getMemberBalanceLogs(member.id)
+    historyLogs.value = Array.isArray(res) ? res : (res.items || [])
+    historyTotal.value = historyLogs.value.length
     historyPage.value = 1
   } catch { historyLogs.value = [] }
   historyLoading.value = false
@@ -486,9 +486,9 @@ const loadMoreLogs = async () => {
   historyLoading.value = true
   historyPage.value++
   try {
-    const res = await getMemberBalanceLogs(historyMember.value.id, { page: historyPage.value, per_page: 20 })
-    historyLogs.value = [...historyLogs.value, ...(res.items || [])]
-    historyTotal.value = res.total || 0
+    const res = await getMemberBalanceLogs(historyMember.value.id)
+    historyLogs.value = [...historyLogs.value, ...(Array.isArray(res) ? res : (res.items || []))]
+    historyTotal.value = historyLogs.value.length
   } catch {}
   historyLoading.value = false
 }

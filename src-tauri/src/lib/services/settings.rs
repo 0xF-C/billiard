@@ -150,6 +150,11 @@ pub fn get_settings() -> HashMap<String, serde_json::Value> {
 pub fn save_settings(settings: HashMap<String, serde_json::Value>) -> Result<(), String> {
     let conn = DB.lock();
     let json = serde_json::to_string(&settings).map_err(|e| e.to_string())?;
-    conn.execute("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('system_settings', ?1, datetime('now'))", params![json]).map_err(|e| e.to_string())?;
+    let existing: Option<i64> = conn.query_row("SELECT id FROM settings WHERE key = 'system_settings'", [], |r| r.get(0)).ok();
+    if existing.is_some() {
+        conn.execute("UPDATE settings SET value = ?1, updated_at = datetime('now') WHERE key = 'system_settings'", params![json]).map_err(|e| e.to_string())?;
+    } else {
+        conn.execute("INSERT INTO settings (key, value, updated_at) VALUES ('system_settings', ?1, datetime('now'))", params![json]).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }

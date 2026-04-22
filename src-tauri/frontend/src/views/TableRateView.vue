@@ -350,7 +350,16 @@ const deletePackageById = async (id) => {
   } catch(e) { ElMessage.error(t('operationFailed')) }
 }
 
-onMounted(() => { loadTables(); loadAreas(); loadPackages() })
+const loadSettingsData = async () => {
+  try {
+    const res = await getSettings()
+    if (res.autoClose) {
+      specialRates.autoClose = { ...specialRates.autoClose, ...res.autoClose }
+    }
+  } catch {}
+}
+
+onMounted(() => { loadTables(); loadAreas(); loadPackages(); loadSettingsData() })
 </script>
 
 <style scoped>
