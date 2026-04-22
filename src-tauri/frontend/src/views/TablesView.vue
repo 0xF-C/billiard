@@ -309,6 +309,7 @@
           <div class="amount-row"><span>{{ t('tableRate') }}</span><span>¥{{ pay.total.toFixed(2) }}</span></div>
           <div v-if="pay.deposit > 0" class="amount-row deposit"><span>{{ t('depositPaid') }}</span><span class="deposit-value">-¥{{ pay.deposit.toFixed(2) }}</span></div>
           <div v-if="pay.discount > 0" class="amount-row discount"><span>{{ t('memberDiscount') }}</span><span class="discount-value">-¥{{ pay.discount.toFixed(2) }}</span></div>
+          <div v-if="pay.balancePaid > 0" class="amount-row balance-paid"><span>{{ t('balancePaid') }}</span><span class="balance-value">-¥{{ pay.balancePaid.toFixed(2) }}</span></div>
           <div class="amount-row total"><span>{{ t('actualPayment') }}</span><span class="total-value">¥{{ pay.final.toFixed(2) }}</span></div>
           <div v-if="pay.change > 0" class="amount-row change"><span>{{ t('change') }}</span><span class="change-value">¥{{ pay.change.toFixed(2) }}</span></div>
         </div>
@@ -606,16 +607,24 @@ const doClose = async (item) => {
     let fin = total
     const deposit = preview.value.deposit || 0
     let change = 0
+    let balancePaid = 0
+    let memberBalance = 0
 
     if (preview.value.member_id) {
       const m = members.value.find(x => x.id === preview.value.member_id)
       if (m) {
+        memberBalance = m.balance || 0
         const mdd = getMemberDayDiscount()
         const memberDisc = m.discount || 1
         const mdayDisc = 1 - (mdd / 100)
         const finalFactor = memberDisc * mdayDisc
         disc = rnd(total * (1 - finalFactor), 2)
         fin = rnd(total - disc, 2)
+
+        if (memberBalance > 0 && fin > 0) {
+          balancePaid = Math.min(memberBalance, fin)
+          fin = Math.max(0, fin - balancePaid)
+        }
       }
     }
 
@@ -624,7 +633,7 @@ const doClose = async (item) => {
       change = deposit > fin ? deposit - fin : 0
     }
 
-    pay.value = { total, discount: disc, final: fin, deposit, change: Math.max(0, change) }
+    pay.value = { total, discount: disc, final: fin, deposit, change: Math.max(0, change), balancePaid, memberBalance }
     closeDlg.value = true
   } catch(e) { ElMessage.error(e.response?.data?.error || t('operationFailed')) }
 }
