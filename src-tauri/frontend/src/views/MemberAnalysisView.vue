@@ -1,53 +1,38 @@
 <template>
-  <div class="member-analysis-page">
+  <div class="page-wrapper">
     <div class="page-header">
-      <h1 class="page-title">{{ t('memberAnalysis') }}</h1>
+      <div>
+        <h1 class="page-title">{{ t('memberAnalysis') }}</h1>
+        <p class="page-subtitle">会员数据总览、等级分布与消费画像</p>
+      </div>
     </div>
 
-    <div class="overview-cards">
-      <div class="overview-card">
-        <div class="card-icon blue">
-          <el-icon><User /></el-icon>
-        </div>
-        <div class="card-body">
-          <span class="card-value">{{ stats.total }}</span>
-          <span class="card-label">{{ t('totalMembers') }}</span>
-        </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">{{ t('totalMembers') }}</div>
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-meta">系统累计会员总数</div>
       </div>
-      <div class="overview-card">
-        <div class="card-icon green">
-          <el-icon><TrendCharts /></el-icon>
-        </div>
-        <div class="card-body">
-          <span class="card-value">{{ stats.newThisMonth }}</span>
-          <span class="card-label">{{ t('newThisMonth') }}</span>
-        </div>
+      <div class="stat-card">
+        <div class="stat-label">{{ t('newThisMonth') }}</div>
+        <div class="stat-value" style="color: var(--accent-success);">+{{ stats.newThisMonth }}</div>
+        <div class="stat-meta">本月新增注册</div>
       </div>
-      <div class="overview-card">
-        <div class="card-icon purple">
-          <el-icon><Coin /></el-icon>
-        </div>
-        <div class="card-body">
-          <span class="card-value">¥{{ stats.totalBalance }}</span>
-          <span class="card-label">{{ t('totalBalance') }}</span>
-        </div>
+      <div class="stat-card">
+        <div class="stat-label">{{ t('totalBalance') }}</div>
+        <div class="stat-value">¥{{ stats.totalBalance.toLocaleString() }}</div>
+        <div class="stat-meta">会员账户沉淀资金</div>
       </div>
-      <div class="overview-card">
-        <div class="card-icon orange">
-          <el-icon><Money /></el-icon>
-        </div>
-        <div class="card-body">
-          <span class="card-value">¥{{ stats.totalConsumption }}</span>
-          <span class="card-label">{{ t('totalConsumption') }}</span>
-        </div>
+      <div class="stat-card">
+        <div class="stat-label">{{ t('totalConsumption') }}</div>
+        <div class="stat-value">¥{{ stats.totalConsumption.toLocaleString() }}</div>
+        <div class="stat-meta">会员累计消费总额</div>
       </div>
     </div>
 
     <div class="charts-grid">
-      <div class="chart-card">
-        <div class="card-header">
-          <h3>{{ t('memberLevelDistribution') }}</h3>
-        </div>
+      <div class="section chart-card">
+        <div class="section-title">{{ t('memberLevelDistribution') }}</div>
         <div class="donut-wrapper">
           <div class="donut">
             <div class="donut-center">
@@ -66,9 +51,9 @@
         </div>
       </div>
 
-      <div class="chart-card">
-        <div class="card-header">
-          <h3>{{ t('newMembersTrend') }}</h3>
+      <div class="section chart-card">
+        <div class="chart-header">
+          <div class="section-title">{{ t('newMembersTrend') }}</div>
           <el-radio-group v-model="trendPeriod" size="small">
             <el-radio-button value="week">{{ t('week') }}</el-radio-button>
             <el-radio-button value="month">{{ t('month') }}</el-radio-button>
@@ -85,10 +70,8 @@
         </div>
       </div>
 
-      <div class="chart-card">
-        <div class="card-header">
-          <h3>{{ t('consumptionDistribution') }}</h3>
-        </div>
+      <div class="section chart-card">
+        <div class="section-title">{{ t('consumptionDistribution') }}</div>
         <div class="bar-horizontal">
           <div v-for="item in consumptionDist" :key="item.range" class="range-row">
             <span class="range-label">{{ item.range }}</span>
@@ -101,26 +84,28 @@
       </div>
     </div>
 
-    <div class="detail-section">
+    <div class="section detail-section">
       <div class="section-header">
-        <h3>{{ t('memberList') }}</h3>
+        <h2 class="section-title" style="margin: 0;">{{ t('memberList') }}</h2>
         <div class="header-actions">
           <el-input
             v-model="searchKw"
             :placeholder="t('searchMember')"
             clearable
             @keyup.enter="loadMembers"
+            style="width: 200px;"
           >
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
-          <el-select v-model="filterLevel" :placeholder="t('level')" clearable>
+          <el-select v-model="filterLevel" :placeholder="t('level')" clearable style="width: 140px;">
             <el-option :label="t('all')" value="" />
             <el-option v-for="l in levelList" :key="l" :label="t(l)" :value="l" />
           </el-select>
         </div>
       </div>
-      <el-table :data="filteredMembers" stripe max-height="400">
-        <el-table-column :label="t('member')" min-width="160">
+      
+      <el-table :data="filteredMembers" stripe max-height="500" style="width: 100%">
+        <el-table-column :label="t('member')" min-width="180">
           <template #default="{ row }">
             <div class="member-cell">
               <el-avatar :size="36" :style="{ background: getLevelColor(row.level) }">
@@ -133,32 +118,32 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="t('level')" width="100">
+        <el-table-column :label="t('level')" width="120">
           <template #default="{ row }">
-            <el-tag :type="getLevelTagType(row.level)" size="small">{{ row.level }}</el-tag>
+            <el-tag :type="getLevelTagType(row.level)" size="small" effect="light">{{ row.level }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column :label="t('balance')" width="100">
+        <el-table-column :label="t('balance')" width="120">
           <template #default="{ row }">
-            <span class="balance">¥{{ row.balance?.toFixed(2) }}</span>
+            <span class="balance-text">¥{{ row.balance?.toFixed(2) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('totalConsumption')" width="120">
+        <el-table-column :label="t('totalConsumption')" width="140">
           <template #default="{ row }">
-            <span>¥{{ row.totalSpent?.toFixed(2) }}</span>
+            <span class="consumption-text">¥{{ row.totalSpent?.toFixed(2) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('lastVisit')" width="120">
+        <el-table-column :label="t('lastVisit')" width="140">
           <template #default="{ row }">
-            {{ formatDate(row.lastVisit) }}
+            <span class="date-text">{{ formatDate(row.lastVisit) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('visitCount')" width="80">
+        <el-table-column :label="t('visitCount')" width="100">
           <template #default="{ row }">
-            {{ row.visitCount }}
+            {{ row.visitCount }}{{ t('times') }}
           </template>
         </el-table-column>
-        <el-table-column :label="t('avgConsumption')" width="100">
+        <el-table-column :label="t('avgConsumption')" width="120">
           <template #default="{ row }">
             ¥{{ row.avgConsumption?.toFixed(0) }}
           </template>
@@ -170,10 +155,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { User, TrendCharts, Coin, Money, Search } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import { getMembers } from '../api'
 import { t } from '../i18n'
-
 
 const searchKw = ref('')
 const filterLevel = ref('')
@@ -190,10 +174,10 @@ const stats = ref({
 
 const levelDist = ref([
   { level: '普通会员', count: 120, percent: 36.6, color: '#909399' },
-  { level: '银卡会员', count: 95, percent: 29.0, color: '#c0c0c0' },
-  { level: '金卡会员', count: 60, percent: 18.3, color: '#e6a23c' },
-  { level: '白金会员', count: 38, percent: 11.6, color: '#409eff' },
-  { level: '钻石会员', count: 15, percent: 4.5, color: '#a855f7' },
+  { level: '银卡会员', count: 95, percent: 29.0, color: '#a1a1aa' },
+  { level: '金卡会员', count: 60, percent: 18.3, color: '#fbbf24' },
+  { level: '白金会员', count: 38, percent: 11.6, color: '#60a5fa' },
+  { level: '钻石会员', count: 15, percent: 4.5, color: '#a78bfa' },
 ])
 
 const trendData = ref([
@@ -208,10 +192,10 @@ const trendData = ref([
 
 const consumptionDist = ref([
   { range: '0-500', count: 80, percent: 24.4, color: '#909399' },
-  { range: '500-1000', count: 95, percent: 29.0, color: '#409eff' },
-  { range: '1000-3000', count: 80, percent: 24.4, color: '#10b981' },
-  { range: '3000-5000', count: 45, percent: 13.7, color: '#f59e0b' },
-  { range: '>5000', count: 28, percent: 8.5, color: '#a855f7' },
+  { range: '500-1000', count: 95, percent: 29.0, color: '#60a5fa' },
+  { range: '1000-3000', count: 80, percent: 24.4, color: '#34d399' },
+  { range: '3000-5000', count: 45, percent: 13.7, color: '#fbbf24' },
+  { range: '>5000', count: 28, percent: 8.5, color: '#a78bfa' },
 ])
 
 const members = ref([])
@@ -231,8 +215,8 @@ const maxTrend = computed(() => Math.max(...trendData.value.map(d => d.count)))
 const barHeight = (count) => maxTrend.value ? (count / maxTrend.value) * 100 : 0
 
 const getLevelColor = (level) => {
-  const colors = { '普通会员': '#909399', '银卡会员': '#c0c0c0', '金卡会员': '#e6a23c', '白金会员': '#409eff', '钻石会员': '#a855f7' }
-  return colors[level] || '#909399'
+  const colors = { '普通会员': '#909399', '银卡会员': '#a1a1aa', '金卡会员': '#fbbf24', '白金会员': '#60a5fa', '钻石会员': '#a78bfa' }
+  return colors[level] || 'var(--accent-primary)'
 }
 
 const getLevelTagType = (level) => {
@@ -259,132 +243,167 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.member-analysis-page { padding: 24px; }
+/* 容器规范：复用全局布局 */
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
 
 .page-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0 0 24px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
 }
 
-.overview-cards {
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* 核心数据卡片：采用你最常用的 stat-card 风格 */
+.stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  margin-bottom: 24px;
 }
 
-.overview-card {
-  background: var(--card-bg);
-  border-radius: 12px;
+.stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
   padding: 20px;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  border: 1px solid var(--border-color);
+  flex-direction: column;
+  gap: 8px;
 }
 
-.card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
+.stat-label {
+  font-size: 13px;
+  color: var(--text-tertiary);
 }
 
-.card-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.card-icon.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.card-icon.purple { background: rgba(139, 92, 246, 0.1); color: #a855f7; }
-.card-icon.orange { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
 
-.card-value { display: block; font-size: 24px; font-weight: 600; }
-.card-label { font-size: 13px; color: var(--text-secondary); }
+.stat-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
 
+/* 统一区块风格：使用全局的 .section 类名逻辑 */
+.section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+}
+
+/* 图表区网格 */
 .charts-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 24px;
-  margin-bottom: 24px;
 }
 
 .chart-card {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
 }
 
-.card-header {
+.chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
 }
 
-.card-header h3 {
+.chart-header .section-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
 }
 
+/* 环形图设计融入暗黑/浅色规范 */
 .donut-wrapper {
   display: flex;
   align-items: center;
-  gap: 24px;
+  justify-content: space-around;
+  flex: 1;
 }
 
 .donut {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: conic-gradient(#909399 0% 36.6%, #c0c0c0 36.6% 65.6%, #e6a23c 65.6% 83.9%, #409eff 83.9% 95.5%, #a855f7 95.5% 100%);
+  background: conic-gradient(#909399 0% 36.6%, #a1a1aa 36.6% 65.6%, #fbbf24 65.6% 83.9%, #60a5fa 83.9% 95.5%, #a78bfa 95.5% 100%);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .donut-center {
-  width: 80px;
-  height: 80px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
-  background: var(--card-bg);
+  background: var(--bg-secondary); /* 动态适应卡片底色 */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
-.donut-total { font-size: 20px; font-weight: 600; }
-.donut-label { font-size: 11px; color: var(--text-secondary); }
+.donut-total { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.donut-label { font-size: 12px; color: var(--text-tertiary); }
 
-.donut-legend { flex: 1; }
+.donut-legend { 
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
   font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  margin-right: 8px;
 }
 
-.legend-name { flex: 1; }
-.legend-count { font-weight: 500; }
-.legend-percent { color: var(--text-secondary); font-size: 12px; width: 40px; text-align: right; }
+.legend-name { width: 64px; }
+.legend-count { font-weight: 600; color: var(--text-primary); width: 32px; text-align: right; margin-right: 8px; }
+.legend-percent { font-size: 12px; width: 44px; text-align: right; }
 
+/* 柱状图规范 */
 .trend-chart {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  height: 120px;
-  padding-top: 20px;
+  justify-content: space-between;
+  height: 130px;
+  flex: 1;
+  padding-top: 10px;
 }
 
 .bar-item {
@@ -396,77 +415,76 @@ onMounted(() => {
 
 .bar-wrap {
   width: 100%;
-  height: 80px;
+  height: 90px;
   display: flex;
   align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 8px;
 }
 
 .bar {
-  width: 100%;
-  background: linear-gradient(to top, var(--primary-color), #6366f1);
+  width: 14px;
+  background: var(--accent-primary); /* 使用全局主色 */
   border-radius: 4px 4px 0 0;
   min-height: 4px;
+  transition: opacity 0.2s;
 }
 
-.bar-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
-.bar-count { font-size: 11px; color: var(--text-secondary); }
+.bar-item:hover .bar {
+  opacity: 0.8;
+}
 
+.bar-label { font-size: 12px; color: var(--text-tertiary); }
+.bar-count { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-top: 4px; }
+
+/* 横向进度条规范 */
 .bar-horizontal {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: space-around;
+  flex: 1;
+  gap: 14px;
 }
 
 .range-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .range-label {
-  width: 60px;
+  width: 70px;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
 .range-bar {
   flex: 1;
-  height: 10px;
-  background: var(--border-color);
-  border-radius: 5px;
+  height: 8px;
+  background: var(--bg-primary); /* 使用更深的底托色 */
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  border-radius: 5px;
+  border-radius: 4px;
 }
 
 .range-count {
   width: 60px;
   text-align: right;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.detail-section {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid var(--border-color);
-}
-
+/* 底部列表区 */
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  margin-bottom: 20px;
 }
 
 .header-actions {
@@ -477,12 +495,34 @@ onMounted(() => {
 .member-cell {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .member-info { display: flex; flex-direction: column; }
-.member-name { font-weight: 500; }
-.member-phone { font-size: 12px; color: var(--text-secondary); }
+.member-name { font-weight: 600; color: var(--text-primary); font-size: 14px; margin-bottom: 2px;}
+.member-phone { font-size: 12px; color: var(--text-tertiary); }
 
-.balance { color: var(--accent-success); font-weight: 500; }
+.balance-text { color: var(--accent-success); font-weight: 600; }
+.consumption-text { color: var(--text-primary); font-weight: 600; }
+.date-text { color: var(--text-secondary); font-size: 13px; }
+
+/* 深度覆写 Element Table 样式适配你的暗黑系统 */
+:deep(.el-table) {
+  background: transparent !important;
+  --el-table-border-color: var(--border-muted);
+}
+:deep(.el-table th.el-table__cell) {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 600;
+}
+:deep(.el-table tr) {
+  background: transparent !important;
+}
+:deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid var(--border-muted) !important;
+}
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: var(--bg-primary) !important; /* 斑马纹适应你的底层色 */
+}
 </style>

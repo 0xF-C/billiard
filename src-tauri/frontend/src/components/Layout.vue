@@ -1,109 +1,149 @@
 <template>
   <div class="layout">
+    <!-- ── Sidebar ── -->
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
-      <div class="sidebar-header" @click="sidebarCollapsed = !sidebarCollapsed">
-        <span class="logo-icon">🎱</span>
-        <span class="logo-text" v-show="!sidebarCollapsed">Billiard</span>
-        <el-icon class="collapse-btn"><ArrowLeft v-if="!sidebarCollapsed" /><ArrowRight v-else /></el-icon>
+      <!-- Logo -->
+      <div class="sidebar-logo" @click="sidebarCollapsed = !sidebarCollapsed">
+        <div class="logo-orb">🎱</div>
+        <div class="logo-text-wrap" v-show="!sidebarCollapsed">
+          <span class="logo-name">Billiard</span>
+          <span class="logo-sub">Management</span>
+        </div>
+        <el-icon class="collapse-icon" v-show="!sidebarCollapsed">
+          <ArrowLeft />
+        </el-icon>
+        <el-icon class="collapse-icon" v-show="sidebarCollapsed">
+          <ArrowRight />
+        </el-icon>
       </div>
 
+      <!-- Nav -->
       <nav class="sidebar-nav">
-        <router-link to="/" class="sidebar-item" :class="{ active: route.path === '/' }">
-          <el-icon><HomeFilled /></el-icon>
-          <span v-show="!sidebarCollapsed">{{ t('dashboard') }}</span>
+        <!-- Dashboard -->
+        <router-link to="/" class="nav-item" :class="{ active: route.path === '/' }">
+          <span class="nav-icon"><el-icon><HomeFilled /></el-icon></span>
+          <span class="nav-label" v-show="!sidebarCollapsed">{{ t('dashboard') }}</span>
+          <span class="nav-active-bar" v-if="route.path === '/'"></span>
         </router-link>
 
-        <div v-for="module in navModules" :key="module.id" class="sidebar-group">
+        <!-- Groups -->
+        <div v-for="module in navModules" :key="module.id" class="nav-group">
           <div
-            class="sidebar-parent"
+            class="nav-parent"
             :class="{ active: isModuleActive(module), open: openGroups[module.id] }"
             @click="toggleGroup(module.id)"
           >
-            <el-icon><component :is="module.icon" /></el-icon>
-            <span v-show="!sidebarCollapsed">{{ t(module.titleKey) }}</span>
-            <el-icon class="group-arrow" v-if="!sidebarCollapsed">
+            <span class="nav-icon"><el-icon><component :is="module.icon" /></el-icon></span>
+            <span class="nav-label" v-show="!sidebarCollapsed">{{ t(module.titleKey) }}</span>
+            <el-icon class="nav-arrow" v-if="!sidebarCollapsed">
               <ArrowRight />
             </el-icon>
           </div>
-          <div class="sidebar-children" v-show="!sidebarCollapsed && openGroups[module.id]">
-            <router-link
-              v-for="sub in module.children"
-              :key="sub.path"
-              :to="sub.path"
-              class="sidebar-child"
-              :class="{ active: route.path === sub.path }"
-            >
-              {{ t(sub.titleKey) }}
-            </router-link>
-          </div>
+
+          <transition name="children-slide">
+            <div class="nav-children" v-show="!sidebarCollapsed && openGroups[module.id]">
+              <router-link
+                v-for="sub in module.children"
+                :key="sub.path"
+                :to="sub.path"
+                class="nav-child"
+                :class="{ active: route.path === sub.path }"
+              >
+                <span class="child-dot"></span>
+                {{ t(sub.titleKey) }}
+              </router-link>
+            </div>
+          </transition>
         </div>
 
-        <router-link to="/hardware" class="sidebar-item" :class="{ active: route.path === '/hardware' }">
-          <el-icon><Monitor /></el-icon>
-          <span v-show="!sidebarCollapsed">{{ t('hardware') }}</span>
+        <!-- Hardware -->
+        <router-link to="/hardware" class="nav-item" :class="{ active: route.path === '/hardware' }">
+          <span class="nav-icon"><el-icon><Monitor /></el-icon></span>
+          <span class="nav-label" v-show="!sidebarCollapsed">{{ t('hardware') }}</span>
         </router-link>
       </nav>
+
+      <!-- Sidebar footer -->
+      <div class="sidebar-footer" v-show="!sidebarCollapsed">
+        <div class="footer-user">
+          <el-avatar :size="28" style="background: linear-gradient(135deg, #3b82f6, #60a5fa); font-size: 12px; flex-shrink:0">
+            {{ userName?.charAt(0) || 'A' }}
+          </el-avatar>
+          <div class="footer-user-info">
+            <span class="footer-username">{{ userName }}</span>
+            <span class="footer-role">Administrator</span>
+          </div>
+          <el-button size="small" circle @click="logout" :icon="SwitchButton" class="footer-logout-btn" title="退出登录" />
+        </div>
+      </div>
     </aside>
 
+    <!-- ── Main ── -->
     <div class="layout-main">
+      <!-- Topbar -->
       <header class="topbar" data-tauri-drag-region>
         <div class="topbar-inner" data-tauri-drag-region>
-          <div class="topbar-left">
-            <div class="stat-bar">
-              <div class="stat-pill">
-                <el-icon><Grid /></el-icon>
-                <span class="stat-val">{{ dashStats.totalTables }}</span>
-                <span class="stat-lbl">{{ t('totalTables') }}</span>
-              </div>
-              <div class="stat-pill danger">
-                <el-icon><Clock /></el-icon>
-                <span class="stat-val">{{ dashStats.activeTables }}</span>
-                <span class="stat-lbl">{{ t('activeTables') }}</span>
-              </div>
-              <div class="stat-pill success">
-                <el-icon><Money /></el-icon>
-                <span class="stat-val">{{ dashStats.todayRevenue }}</span>
-                <span class="stat-lbl">{{ t('todayRevenue') }}</span>
-              </div>
-              <div class="stat-pill purple">
-                <el-icon><User /></el-icon>
-                <span class="stat-val">{{ dashStats.activeMembers }}</span>
-                <span class="stat-lbl">{{ t('activeMembers') }}</span>
-              </div>
+
+          <!-- Stats -->
+          <div class="topbar-stats">
+            <div class="stat-chip">
+              <el-icon class="chip-icon"><Grid /></el-icon>
+              <span class="chip-val">{{ dashStats.totalTables }}</span>
+              <span class="chip-lbl">{{ t('totalTables') }}</span>
+            </div>
+            <div class="stat-chip chip-red">
+              <el-icon class="chip-icon"><Clock /></el-icon>
+              <span class="chip-val">{{ dashStats.activeTables }}</span>
+              <span class="chip-lbl">{{ t('activeTables') }}</span>
+            </div>
+            <div class="stat-chip chip-green">
+              <el-icon class="chip-icon"><Money /></el-icon>
+              <span class="chip-val">{{ dashStats.todayRevenue }}</span>
+              <span class="chip-lbl">{{ t('todayRevenue') }}</span>
+            </div>
+            <div class="stat-chip chip-purple">
+              <el-icon class="chip-icon"><User /></el-icon>
+              <span class="chip-val">{{ dashStats.activeMembers }}</span>
+              <span class="chip-lbl">{{ t('activeMembers') }}</span>
             </div>
           </div>
-          <div class="topbar-right">
-            <div class="hardware-status">
-              <div v-for="hw in hardwareStatus" :key="hw.device_type + hw.device_name" class="hw-indicator" :class="{ offline: !hw.online }">
+
+          <!-- Right controls -->
+          <div class="topbar-actions">
+            <!-- Hardware status -->
+            <div class="hw-row" v-if="hardwareStatus.length">
+              <div
+                v-for="hw in hardwareStatus"
+                :key="hw.device_type + hw.device_name"
+                class="hw-dot"
+                :class="{ offline: !hw.online }"
+                :title="hw.device_name"
+              >
                 <el-icon v-if="hw.device_type === 'printer'"><Printer /></el-icon>
                 <el-icon v-else><Monitor /></el-icon>
               </div>
             </div>
-            <div class="live-clock">
+
+            <!-- Clock -->
+            <div class="topbar-clock">
               <el-icon><Clock /></el-icon>
-              {{ clock }}
+              <span>{{ clock }}</span>
             </div>
-            <div class="lang-group">
+
+            <!-- Language -->
+            <div class="lang-switcher">
               <button
                 v-for="l in langs"
                 :key="l.v"
                 :class="['lang-btn', { active: curLang === l.v }]"
                 @click="setLang(l.v)"
-              >
-                {{ l.v.toUpperCase() }}
-              </button>
+              >{{ l.v.toUpperCase() }}</button>
             </div>
-            <div class="user-badge">
-              <el-avatar :size="28" style="background: var(--accent-primary); font-size: 12px;">
-                {{ userName?.charAt(0) || 'A' }}
-              </el-avatar>
-              <span class="user-name">{{ userName }}</span>
-            </div>
-            <el-button size="small" @click="logout" :icon="SwitchButton" class="logout-btn">{{ t('logout') }}</el-button>
           </div>
         </div>
       </header>
 
+      <!-- Page content -->
       <main class="main-content">
         <router-view />
       </main>
@@ -115,10 +155,10 @@
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElIcon, ElAvatar, ElButton } from 'element-plus'
-import { 
-  HomeFilled, Grid, User, ShoppingCart, Money, Setting, 
-  Monitor, Clock, ArrowDown, ArrowLeft, ArrowRight, SwitchButton, Calendar, 
-  Box, UserFilled, Ticket, List, Printer 
+import {
+  HomeFilled, Grid, User, ShoppingCart, Money, Setting,
+  Monitor, Clock, ArrowLeft, ArrowRight, SwitchButton, Calendar,
+  Box, UserFilled, Ticket, List, Printer
 } from '@element-plus/icons-vue'
 import { t, currentLang, setLang as setI18nLang } from '../i18n'
 import { getDashboard, getHardwareStatus } from '../api'
@@ -139,9 +179,7 @@ const langs = [
 
 const navModules = [
   {
-    id: 'front',
-    titleKey: 'nav_front',
-    icon: Grid,
+    id: 'front', titleKey: 'nav_front', icon: Grid,
     children: [
       { path: '/tables', titleKey: 'sub_table_manage' },
       { path: '/table-overview', titleKey: 'sub_realtime_tables' },
@@ -152,9 +190,7 @@ const navModules = [
     ]
   },
   {
-    id: 'member',
-    titleKey: 'nav_member',
-    icon: User,
+    id: 'member', titleKey: 'nav_member', icon: User,
     children: [
       { path: '/members', titleKey: 'sub_member_files' },
       { path: '/member-levels', titleKey: 'sub_member_cards' },
@@ -165,9 +201,7 @@ const navModules = [
     ]
   },
   {
-    id: 'booking',
-    titleKey: 'nav_booking',
-    icon: Calendar,
+    id: 'booking', titleKey: 'nav_booking', icon: Calendar,
     children: [
       { path: '/booking-online', titleKey: 'sub_online_booking' },
       { path: '/booking-kanban', titleKey: 'sub_booking_kanban' },
@@ -177,9 +211,7 @@ const navModules = [
     ]
   },
   {
-    id: 'finance',
-    titleKey: 'nav_finance',
-    icon: Money,
+    id: 'finance', titleKey: 'nav_finance', icon: Money,
     children: [
       { path: '/finance-daily', titleKey: 'sub_daily_report' },
       { path: '/revenue-analysis', titleKey: 'sub_revenue_analysis' },
@@ -190,9 +222,7 @@ const navModules = [
     ]
   },
   {
-    id: 'inventory',
-    titleKey: 'nav_inventory',
-    icon: Box,
+    id: 'inventory', titleKey: 'nav_inventory', icon: Box,
     children: [
       { path: '/inventory-manage', titleKey: 'sub_goods_manage' },
       { path: '/category-manage', titleKey: 'sub_category_manage' },
@@ -203,9 +233,7 @@ const navModules = [
     ]
   },
   {
-    id: 'staff',
-    titleKey: 'nav_staff',
-    icon: UserFilled,
+    id: 'staff', titleKey: 'nav_staff', icon: UserFilled,
     children: [
       { path: '/staff-files', titleKey: 'sub_staff_files' },
       { path: '/attendance', titleKey: 'sub_attendance' },
@@ -215,9 +243,7 @@ const navModules = [
     ]
   },
   {
-    id: 'marketing',
-    titleKey: 'nav_marketing',
-    icon: Ticket,
+    id: 'marketing', titleKey: 'nav_marketing', icon: Ticket,
     children: [
       { path: '/coupons', titleKey: 'sub_coupons' },
       { path: '/promotions', titleKey: 'sub_promotions' },
@@ -227,9 +253,7 @@ const navModules = [
     ]
   },
   {
-    id: 'system',
-    titleKey: 'nav_system',
-    icon: Setting,
+    id: 'system', titleKey: 'nav_system', icon: Setting,
     children: [
       { path: '/area-manage', titleKey: 'areaSettings' },
       { path: '/table-manage', titleKey: 'sub_table_settings' },
@@ -252,20 +276,7 @@ const toggleGroup = (id) => {
   openGroups.value = { ...openGroups.value, [id]: !openGroups.value[id] }
 }
 
-const isModuleActive = (module) => {
-  return module.children.some(sub => route.path === sub.path)
-}
-
-const currentPageTitle = computed(() => {
-  if (route.path === '/') return ''
-  if (route.path === '/hardware') return t('hardware')
-  for (const mod of navModules) {
-    for (const sub of mod.children) {
-      if (route.path === sub.path) return t(sub.titleKey)
-    }
-  }
-  return ''
-})
+const isModuleActive = (module) => module.children.some(sub => route.path === sub.path)
 
 const userName = computed(() => {
   try {
@@ -275,16 +286,8 @@ const userName = computed(() => {
   }
 })
 
-const setLang = (l) => {
-  setI18nLang(l)
-  window.location.reload()
-}
-
-const logout = () => {
-  localStorage.removeItem('token')
-  router.push('/login')
-}
-
+const setLang = (l) => { setI18nLang(l); window.location.reload() }
+const logout = () => { localStorage.removeItem('token'); router.push('/login') }
 const updateClock = () => {
   const now = new Date()
   clock.value = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -301,11 +304,8 @@ const loadDashStats = async () => {
 }
 
 const loadHardwareStatus = async () => {
-  try {
-    hardwareStatus.value = await getHardwareStatus()
-  } catch {
-    hardwareStatus.value = []
-  }
+  try { hardwareStatus.value = await getHardwareStatus() }
+  catch { hardwareStatus.value = [] }
 }
 
 onMounted(() => {
@@ -321,19 +321,21 @@ onUnmounted(() => { clearInterval(timer); clearInterval(dashTimer) })
 </script>
 
 <style scoped>
+/* ── Layout Shell ── */
 .layout {
   min-height: 100vh;
   display: flex;
   background: var(--bg-primary);
 }
 
+/* ── Sidebar ── */
 .sidebar {
-  width: 240px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-default);
+  width: 236px;
+  background: var(--gradient-sidebar);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  transition: width 0.25s ease;
+  transition: width 0.25s cubic-bezier(0.4,0,0.2,1);
   overflow: hidden;
   flex-shrink: 0;
   height: 100vh;
@@ -342,115 +344,132 @@ onUnmounted(() => { clearInterval(timer); clearInterval(dashTimer) })
   z-index: 100;
 }
 
-.sidebar.collapsed {
-  width: 64px;
-}
+.sidebar.collapsed { width: 60px; }
 
-.sidebar-header {
-  height: 64px;
+/* Logo */
+.sidebar-logo {
+  height: 60px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 14px;
   gap: 10px;
   cursor: pointer;
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
-  background: var(--bg-secondary);
   user-select: none;
+  transition: background var(--transition-fast);
 }
 
-.sidebar.collapsed .sidebar-header {
-  justify-content: center;
-  padding: 0;
-}
+.sidebar-logo:hover { background: var(--bg-hover); }
+.sidebar.collapsed .sidebar-logo { justify-content: center; padding: 0; }
 
-.logo-icon {
-  font-size: 24px;
+.logo-orb {
+  font-size: 22px;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 6px rgba(255,215,0,0.3));
+  filter: drop-shadow(0 0 8px rgba(251,191,36,0.4));
+  transition: transform var(--transition-fast);
+}
+.sidebar-logo:hover .logo-orb { transform: scale(1.08); }
+
+.logo-text-wrap {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
 }
 
-.logo-text {
+.logo-name {
+  font-size: 15px;
+  font-weight: 700;
   background: var(--gradient-gold);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-size: 18px;
-  font-weight: 700;
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
 
-.collapse-btn {
+.logo-sub {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.collapse-icon {
   margin-left: auto;
-  color: var(--text-tertiary);
-  transition: all var(--transition-fast);
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: color var(--transition-fast);
 }
+.sidebar-logo:hover .collapse-icon { color: var(--text-tertiary); }
 
-.sidebar-header:hover .collapse-btn {
-  color: var(--accent-primary);
-}
-
+/* Nav */
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px;
+  padding: 10px 8px;
   scrollbar-width: thin;
-  scrollbar-color: var(--bg-elevated) transparent;
+  scrollbar-color: transparent transparent;
+}
+.sidebar-nav:hover {
+  scrollbar-color: rgba(255,255,255,0.07) transparent;
 }
 
-.sidebar-nav::-webkit-scrollbar {
-  width: 4px;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background: var(--bg-elevated);
-  border-radius: 2px;
-}
-
-.sidebar-item {
+/* Nav item (top-level link) */
+.nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 9px;
+  padding: 8px 10px;
   border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
   transition: all var(--transition-fast);
+  position: relative;
   white-space: nowrap;
-  cursor: pointer;
+  margin-bottom: 2px;
 }
 
-.sidebar-item:hover {
-  color: var(--text-primary);
+.nav-item:hover {
+  color: var(--text-secondary);
   background: var(--bg-hover);
 }
 
-.sidebar-item.active {
+.nav-item.active {
   color: var(--accent-primary);
   background: var(--bg-active);
 }
 
-.sidebar.collapsed .sidebar-item {
-  justify-content: center;
-  padding: 10px;
+.sidebar.collapsed .nav-item { justify-content: center; padding: 9px 0; }
+
+.nav-active-bar {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(96,165,250,0.5);
 }
 
-.sidebar-group {
-  margin-bottom: 2px;
-}
+/* Nav group */
+.nav-group { margin-bottom: 1px; }
 
-.sidebar-parent {
+.nav-parent {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 9px;
+  padding: 8px 10px;
   border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: 14px;
+  color: var(--text-tertiary);
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -458,60 +477,148 @@ onUnmounted(() => { clearInterval(timer); clearInterval(dashTimer) })
   user-select: none;
 }
 
-.sidebar-parent:hover {
-  color: var(--text-primary);
+.nav-parent:hover {
+  color: var(--text-secondary);
   background: var(--bg-hover);
 }
 
-.sidebar-parent.active {
-  color: var(--accent-primary);
-}
+.nav-parent.active { color: var(--text-primary); }
 
-.sidebar-parent.open .group-arrow {
-  transform: rotate(90deg);
-}
+.nav-parent.open .nav-arrow { transform: rotate(90deg); color: var(--accent-primary); }
 
-.group-arrow {
+.nav-arrow {
   margin-left: auto;
-  font-size: 12px;
-  transition: transform var(--transition-fast);
-  color: var(--text-tertiary);
+  font-size: 11px;
+  transition: transform var(--transition-normal), color var(--transition-fast);
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
-.sidebar.collapsed .sidebar-parent {
+.sidebar.collapsed .nav-parent { justify-content: center; padding: 9px 0; }
+
+/* Nav icon */
+.nav-icon {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 10px;
+  width: 18px;
+  flex-shrink: 0;
+  font-size: 15px;
 }
 
-.sidebar-children {
-  margin-left: 12px;
-  border-left: 2px solid var(--border-default);
-  padding-left: 4px;
+/* Nav label */
+.nav-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+
+/* Children */
+.nav-children {
+  margin: 2px 0 4px 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border-subtle);
+  overflow: hidden;
 }
 
-.sidebar-child {
-  display: block;
-  padding: 7px 14px;
+.nav-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
-  color: var(--text-tertiary);
+  color: var(--text-muted);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 400;
   transition: all var(--transition-fast);
   white-space: nowrap;
-  cursor: pointer;
+  margin-bottom: 1px;
 }
 
-.sidebar-child:hover {
-  color: var(--text-primary);
+.nav-child:hover {
+  color: var(--text-secondary);
   background: var(--bg-hover);
 }
 
-.sidebar-child.active {
+.nav-child.active {
   color: var(--accent-primary);
   background: var(--bg-active);
   font-weight: 500;
 }
 
+.child-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+.nav-child.active .child-dot { opacity: 1; }
+
+/* Slide transition */
+.children-slide-enter-active,
+.children-slide-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.children-slide-enter-from,
+.children-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+.footer-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+}
+
+.footer-user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.footer-username {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footer-role {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.footer-logout-btn {
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(248,113,113,0.2) !important;
+  background: rgba(248,113,113,0.06) !important;
+  color: var(--accent-danger) !important;
+  flex-shrink: 0;
+}
+.footer-logout-btn:hover {
+  background: rgba(248,113,113,0.14) !important;
+}
+
+/* ── Layout main ── */
 .layout-main {
   flex: 1;
   min-width: 0;
@@ -520,190 +627,152 @@ onUnmounted(() => { clearInterval(timer); clearInterval(dashTimer) })
   min-height: 100vh;
 }
 
+/* ── Topbar ── */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 99;
-  background: rgba(17,24,32,0.85);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-bottom: 1px solid var(--border-default);
+  background: rgba(8,13,20,0.9);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 0 rgba(96,165,250,0.03);
 }
 
 .topbar-inner {
-  height: 56px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-}
-
-.topbar-left {
-  display: flex;
-  align-items: center;
   gap: 12px;
-  flex: 1;
-  min-width: 0;
 }
 
-.stat-bar {
+/* Stat chips */
+.topbar-stats {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 8px;
+  gap: 5px;
 }
 
-.stat-pill {
+.stat-chip {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  background: rgba(88,166,255,0.1);
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-subtle);
   font-size: 12px;
   white-space: nowrap;
+  transition: border-color var(--transition-fast);
 }
 
-.stat-pill .el-icon {
-  font-size: 13px;
-  color: var(--accent-primary);
-}
+.stat-chip:hover { border-color: var(--border-default); }
 
-.stat-pill .stat-val {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-size: 13px;
-}
+.chip-icon { font-size: 12px; color: var(--accent-primary); }
+.chip-val { font-weight: 700; color: var(--text-primary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip-lbl { color: var(--text-muted); font-size: 11px; }
 
-.stat-pill .stat-lbl {
-  color: var(--text-tertiary);
-  font-size: 11px;
-}
+.chip-red .chip-icon  { color: var(--accent-danger); }
+.chip-green .chip-icon { color: var(--accent-success); }
+.chip-purple .chip-icon { color: var(--accent-purple); }
 
-.stat-pill.danger { background: rgba(248,81,73,0.1); }
-.stat-pill.danger .el-icon { color: var(--accent-danger); }
-.stat-pill.success { background: rgba(63,185,80,0.1); }
-.stat-pill.success .el-icon { color: var(--accent-success); }
-.stat-pill.purple { background: rgba(163,113,247,0.1); }
-.stat-pill.purple .el-icon { color: var(--accent-purple); }
-
-.hardware-status {
+/* Right side actions */
+.topbar-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 15px;
+  gap: 8px;
 }
 
-.hw-indicator {
+/* Hardware dots */
+.hw-row { display: flex; align-items: center; gap: 3px; }
+
+.hw-dot {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: rgba(63,185,80,0.15);
+  background: rgba(52,211,153,0.1);
   color: var(--accent-success);
-  font-size: 14px;
+  font-size: 12px;
+  border: 1px solid rgba(52,211,153,0.15);
 }
 
-.hw-indicator.offline {
-  background: rgba(248,81,73,0.15);
+.hw-dot.offline {
+  background: rgba(248,113,113,0.1);
   color: var(--accent-danger);
+  border-color: rgba(248,113,113,0.15);
 }
 
-.page-breadcrumb {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.topbar-right {
+/* Clock */
+.topbar-clock {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.live-clock {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: var(--text-tertiary);
-  font-size: 13px;
+  font-size: 12px;
   font-family: var(--font-mono);
-  padding: 6px 12px;
-  background: var(--bg-secondary);
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-muted);
+  letter-spacing: 0.05em;
 }
+.topbar-clock .el-icon { font-size: 11px; }
 
-.lang-group {
+/* Language switcher */
+.lang-switcher {
   display: flex;
-  gap: 2px;
-  background: var(--bg-secondary);
-  padding: 4px;
+  gap: 1px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-muted);
+  padding: 3px;
 }
 
 .lang-btn {
-  padding: 4px 10px;
+  padding: 3px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--text-tertiary);
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.lang-btn:hover { color: var(--text-secondary); }
+.lang-btn:hover { color: var(--text-tertiary); }
+
 .lang-btn.active {
   background: var(--accent-primary);
   color: #fff;
 }
 
-.user-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px 4px 4px;
-  background: var(--bg-secondary);
-  border-radius: 20px;
-  border: 1px solid var(--border-muted);
-}
-
-.user-name {
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.logout-btn {
-  border: 1px solid rgba(248,81,73,0.3) !important;
-  background: rgba(248,81,73,0.08) !important;
-  color: var(--accent-danger) !important;
-}
-
+/* ── Main content ── */
 .main-content {
   flex: 1;
-  padding: 24px;
-  max-width: 1600px;
+  padding: 22px 24px;
+  max-width: 1640px;
   margin: 0 auto;
   width: 100%;
 }
 
+/* ── Responsive ── */
 @media (max-width: 1024px) {
-  .sidebar { width: 64px; }
-  .sidebar .logo-text,
-  .sidebar span:not(.logo-icon) { display: none; }
-  .sidebar .sidebar-children { display: none; }
-  .sidebar .sidebar-parent { justify-content: center; padding: 10px; }
-  .sidebar .sidebar-item { justify-content: center; padding: 10px; }
-  .sidebar .collapse-btn { display: none; }
-  .sidebar .group-arrow { display: none; }
-  .sidebar .sidebar-nav { padding: 4px; }
-  .sidebar-group { margin-bottom: 0; }
-  .sidebar-children { margin-left: 0; border-left: none; padding-left: 0; }
+  .sidebar { width: 60px; }
+  .sidebar .nav-label,
+  .sidebar .logo-text-wrap,
+  .sidebar .nav-arrow,
+  .sidebar .sidebar-footer { display: none; }
+  .sidebar .nav-children { display: none; }
+  .sidebar .nav-parent { justify-content: center; padding: 9px 0; }
+  .sidebar .nav-item { justify-content: center; padding: 9px 0; }
+  .sidebar .collapse-icon { display: none; }
+  .sidebar-nav { padding: 6px 4px; }
 }
 </style>
