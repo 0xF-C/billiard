@@ -94,13 +94,19 @@ pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
             return Err(format!("球桌当前状态: {}，无法开台", status));
         }
 
-        if let (Some(member_id), Some(price)) = (req.member_id, package_price) {
+        if let Some(member_id) = req.member_id {
             let balance: f64 = tx
                 .query_row("SELECT balance FROM members WHERE id = ?1", params![member_id], |r| r.get(0))
                 .unwrap_or(0.0);
-            if balance < price {
+            if balance <= 0.0 {
                 tx.rollback().ok();
-                return Err(format!("套餐价格 ¥{:.2}，会员余额不足", price));
+                return Err("会员余额不足，无法开台".to_string());
+            }
+            if let Some(price) = package_price {
+                if balance < price {
+                    tx.rollback().ok();
+                    return Err(format!("套餐价格 ¥{:.2}，会员余额不足", price));
+                }
             }
         }
 
