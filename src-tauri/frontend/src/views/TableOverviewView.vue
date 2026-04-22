@@ -92,164 +92,17 @@
       </div>
     </div>
 
-    <!-- Open Table Dialog - Full Size -->
-    <el-dialog v-model="openDlg" :title="openDlgTitle" width="720px" :close-on-click-modal="false" class="open-table-dialog">
-      <div class="open-form" v-if="sel">
-        <!-- {{ t('TableInfoCard') }} -->
-        <div class="table-hero">
-          <div class="hero-icon" :class="sel.is_private ? 'private' : 'hall'">
-            <el-icon><component :is="sel.is_private ? 'House' : 'Grid'" /></el-icon>
-          </div>
-          <div class="hero-info">
-            <span class="hero-name">{{ sel.name }}</span>
-            <span class="hero-rate">¥{{ sel.rate_per_hour }}/{{ t('hour') }}</span>
-          </div>
-          <el-tag :type="sel.is_private ? 'warning' : 'success'" size="large">
-            {{ sel.is_private ? t('privateRoom') : t('hall') }}
-          </el-tag>
-        </div>
-
-        <!-- {{ t('CustomerTypeSwitch') }} -->
-        <div class="customer-type-section">
-          <div class="section-title">{{ t('member') }}/{{ t('walkIn') }}</div>
-          <div class="customer-tabs">
-            <div :class="['tab-btn', { active: customerType === 'walkin' }]" @click="customerType = 'walkin'">
-              <el-icon><UserFilled /></el-icon>
-              <span>{{ t('walkIn') }}</span>
-            </div>
-            <div :class="['tab-btn', { active: customerType === 'member' }]" @click="customerType = 'member'">
-              <el-icon><Avatar /></el-icon>
-              <span>{{ t('member') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- {{ t('MemberSearchArea') }} -->
-        <div v-if="customerType === 'member'" class="member-section">
-          <div class="section-title">{{ t('searchMember') }}</div>
-          <el-autocomplete
-            v-model="memberSearch"
-            :fetch-suggestions="searchMembers"
-            :trigger-on-focus="false"
-            clearable
-            :placeholder="t('search') + ' ' + t('name') + '/' + t('phone')"
-            size="large"
-            class="member-search"
-            @select="onMemberSelect"
-            @change="onMemberSearchChange"
-          >
-            <template #prefix><el-icon><Search /></el-icon></template>
-            <template #default="{ item }">
-              <div class="member-option">
-                <div class="option-left">
-                  <el-avatar :size="32" style="background: var(--accent-primary);">{{ item.name?.charAt(0) }}</el-avatar>
-                  <div class="option-info">
-                    <span class="option-name">{{ item.name }}</span>
-                    <span class="option-phone">{{ item.phone }}</span>
-                  </div>
-                </div>
-                <div class="option-right">
-                  <el-tag v-if="getMemberDiscount(item) > 0" type="success" size="small">{{ getMemberDiscountText(item) }}{{ t('discount') }}</el-tag>
-                  <span class="option-balance">¥{{ item.balance?.toFixed(2) }}</span>
-                </div>
-              </div>
-            </template>
-          </el-autocomplete>
-
-          <!-- {{ t('SelectedMemberCard') }} -->
-          <div v-if="selectedMember" class="selected-member-card">
-            <div class="member-info-left">
-              <el-avatar :size="48" style="background: var(--accent-success);">{{ selectedMember.name?.charAt(0) }}</el-avatar>
-              <div class="member-details">
-                <span class="member-name">{{ selectedMember.name }}</span>
-                <span class="member-phone">{{ selectedMember.phone }}</span>
-              </div>
-            </div>
-            <div class="member-info-right">
-              <div class="member-balance-display">
-                <span class="balance-label">{{ t('balance') }}</span>
-                <span class="balance-amount">¥{{ selectedMember.balance?.toFixed(2) }}</span>
-              </div>
-              <el-tag type="success" size="large">{{ getMemberDiscountText(selectedMember) }}{{ t('discount') }}</el-tag>
-            </div>
-            <el-button text type="danger" :icon="Close" @click="clearMember">{{ t('cancel') }}</el-button>
-          </div>
-        </div>
-
-        <!-- {{ t('WalkinCustomerArea') }} -->
-        <div v-else class="walkin-section">
-          <div class="section-title">{{ t('walkInInfo') }}</div>
-          <div class="walkin-form">
-            <div class="form-row">
-              <div class="form-item">
-                <label>{{ t('name') }}</label>
-                <el-input v-model="walkinForm.name" :placeholder="t('optional')" clearable>
-                  <template #prefix><el-icon><User /></el-icon></template>
-                </el-input>
-              </div>
-              <div class="form-item">
-                <label>{{ t('phone') }}</label>
-                <el-input v-model="walkinForm.phone" :placeholder="t('optional')" clearable>
-                  <template #prefix><el-icon><Phone /></el-icon></template>
-                </el-input>
-              </div>
-            </div>
-
-            <div class="deposit-section">
-              <div class="deposit-header">
-                <span class="deposit-title">{{ t('deposit') }}</span>
-                <el-switch v-model="walkinForm.useDeposit" :active-text="t('confirm')" :inactive-text="t('cancel')" />
-              </div>
-              <div v-if="walkinForm.useDeposit" class="deposit-options">
-                <div class="quick-amounts">
-                  <el-button v-for="amt in [50, 100, 200, 500]" :key="amt"
-                    :class="['amount-btn', { active: walkinForm.deposit === amt }]" @click="walkinForm.deposit = amt">
-                    ¥{{ amt }}
-                  </el-button>
-                </div>
-                <div class="custom-deposit">
-                  <el-input-number v-model="walkinForm.deposit" :min="0" :step="10" controls-position="right" />
-                </div>
-                <el-select v-model="walkinForm.payment_method" :placeholder="t('paymentMethod')">
-                  <el-option :label="t('cash')" value="cash" />
-                  <el-option :label="t('wechat')" value="wechat" />
-                  <el-option :label="t('alipay')" value="alipay" />
-                </el-select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- {{ t('CostPreview') }} -->
-        <div class="cost-preview">
-          <div class="preview-title">{{ t('amount') }}</div>
-          <div class="preview-content">
-            <div class="preview-row">
-              <span>{{ t('tableRate') }}</span>
-              <span>¥{{ sel.rate_per_hour }}/{{ t('hour') }}</span>
-            </div>
-            <div v-if="customerType === 'member' && selectedMember" class="preview-row highlight">
-              <span>{{ t('memberDiscount') }}</span>
-              <span class="discount-text">{{ getMemberDiscountText(selectedMember) }}{{ t('discount') }}</span>
-            </div>
-            <div class="preview-row highlight">
-              <span>{{ t('actualPayment') }}</span>
-              <span class="pay-amount">~ ¥{{ previewCost }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <el-button size="large" @click="openDlg=false">{{ t('cancel') }}</el-button>
-        <el-button type="success" size="large" @click="cfmOpen" :loading="submitting">
-          <el-icon><Check /></el-icon>
-          {{ t('confirmOpen') }}
-        </el-button>
-      </template>
-    </el-dialog>
+    <!-- Open Table Dialog -->
+    <OpenTableDialog
+      v-model="openDlg"
+      :table="sel"
+      :members="members"
+      :packages="packages"
+      @success="loadData"
+    />
 
     <!-- {{ t('CheckoutDialog') }} -->
-    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
+    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false" top="5vh" append-to-body>
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">
           <div class="checkout-table">
@@ -261,7 +114,7 @@
         <div class="checkout-details">
           <div class="detail-row">
             <span class="detail-label">{{ t('memberName') }}</span>
-            <span class="detail-value">{{ preview.member_name || walkinName || t('walkIn') }}</span>
+            <span class="detail-value">{{ preview.member_name || t('walkIn') }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">{{ t('startTime') }}</span>
@@ -337,7 +190,7 @@
     </el-dialog>
 
     <!-- {{ t('CancelOrderDialog') }} -->
-    <el-dialog v-model="cancelDlg" :title="t('cancelOrder')" width="420px">
+    <el-dialog v-model="cancelDlg" :title="t('cancelOrder')" width="420px" top="5vh" append-to-body>
       <div style="display:flex;flex-direction:column;gap:12px;" v-if="preview">
         <div style="padding:12px;background:var(--bg-primary);border-radius:8px;">
           <div style="display:flex;justify-content:space-between;padding:4px 0;">
@@ -367,7 +220,7 @@
     </el-dialog>
 
     <!-- {{ t('ReceiptPreviewDialog') }} -->
-    <el-dialog v-model="showReceiptPreview" :title="t('receipt')" width="360px">
+    <el-dialog v-model="showReceiptPreview" :title="t('receipt')" width="360px" top="5vh" append-to-body>
       <div class="receipt-content" v-if="receiptPreview">
         <div style="text-align:center;font-weight:bold;font-size:16px;margin-bottom:8px;">{{ t('billiardHall') }}</div>
         <div style="text-align:center;color:var(--text-secondary);font-size:12px;margin-bottom:12px;">{{ new Date().toLocaleString() }}</div>
@@ -415,14 +268,16 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-import { ElMessage, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElAutocomplete, ElAvatar, ElInputNumber, ElSwitch, ElInput } from 'element-plus'
-import { Refresh, Grid, CircleCheckFilled, Timer, Tools, Location, Warning, House, Check, User, Clock, Money, UserFilled, Avatar, Search, Close, Phone, CircleClose, Ticket, Printer } from '@element-plus/icons-vue'
-import { getTables, getAreas, getMembers, getOrderByTable, openTable, closeTable, cancelOrder, realtimeCheck, checkExpiredPackages, autoCloseExpired, printReceipt as apiPrintReceipt } from '../api'
+import { ElMessage, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElInput } from 'element-plus'
+import { Refresh, Grid, CircleCheckFilled, Timer, Tools, Location, Warning, Check, User, Clock, Money, CircleClose, Ticket, Printer } from '@element-plus/icons-vue'
+import { getTables, getAreas, getMembers, getOrderByTable, closeTable, cancelOrder, realtimeCheck, checkExpiredPackages, autoCloseExpired, printReceipt as apiPrintReceipt, getSettings } from '../api'
 import { t, currentLang } from '../i18n'
+import OpenTableDialog from '../components/OpenTableDialog.vue'
 
 const tables = ref([])
 const areas = ref([])
 const members = ref([])
+const packages = ref([])
 const selectedArea = ref(null)
 const openDlg = ref(false)
 const closeDlg = ref(false)
@@ -430,11 +285,6 @@ const sel = ref(null)
 const preview = ref(null)
 const pay = ref({ total: 0, discount: 0, final: 0, deposit: 0, change: 0 })
 const submitting = ref(false)
-
-const customerType = ref('walkin')
-const memberSearch = ref('')
-const selectedMember = ref(null)
-const walkinForm = ref({ name: '', phone: '', useDeposit: false, deposit: 100, payment_method: 'cash' })
 
 const paymentMethods = [
   { value: 'cash', label: t('cash'), icon: 'Wallet' },
@@ -444,37 +294,6 @@ const paymentMethods = [
 const closePaymentMethod = ref('cash')
 const cancelDlg = ref(false)
 const cancelReason = ref('')
-
-const openDlgTitle = computed(() => {
-  currentLang.value
-  return sel.value ? `${t('openTable')} - ${sel.value.name}` : t('openTable')
-})
-
-const previewCost = computed(() => {
-  if (!sel.value) return '0.00'
-  // Ensure rate_per_hour is a valid number
-  let rate = 0
-  if (sel.value.rate_per_hour !== undefined && sel.value.rate_per_hour !== null) {
-    rate = parseFloat(sel.value.rate_per_hour)
-  }
-  if (isNaN(rate) || rate < 0) rate = 0
-
-  if (customerType.value === 'member' && selectedMember.value) {
-    const disc = getMemberDiscount(selectedMember.value)
-    if (!disc) return rate.toFixed(2)
-    const discNum = parseFloat(disc)
-    if (isNaN(discNum) || discNum <= 0) return rate.toFixed(2)
-    return (rate * discNum / 10).toFixed(2)
-  }
-  return rate.toFixed(2)
-})
-
-const walkinName = computed(() => {
-  if (customerType.value === 'walkin' && walkinForm.value.name) {
-    return walkinForm.value.name
-  }
-  return ''
-})
 
 const stats = computed(() => ({
   total: tables.value.length,
@@ -534,46 +353,6 @@ const formatDateTime = (time) => {
 
 const rnd = (n, d) => Math.round(n * Math.pow(10, d)) / Math.pow(10, d)
 
-const getMemberDiscount = (member) => {
-  if (!member || !member.discount || member.discount >= 1) return 0
-  const d = parseFloat(member.discount)
-  return isNaN(d) ? 0 : d
-}
-
-const getMemberDiscountText = (member) => {
-  if (!member || !member.discount || member.discount >= 1) return 0
-  const d = parseFloat(member.discount)
-  if (isNaN(d)) return 0
-  return (d * 10).toFixed(1)
-}
-
-const searchMembers = (query, callback) => {
-  if (!query) { callback([]); return }
-  const kw = query.toLowerCase()
-  const results = members.value
-    .filter(m => m.phone.includes(kw) || m.name.toLowerCase().includes(kw))
-    .slice(0, 10)
-    .map(m => ({ ...m, value: `${m.name} - ${m.phone}` }))
-  callback(results)
-}
-
-const onMemberSelect = (item) => {
-  selectedMember.value = item
-  memberSearch.value = ''
-  customerType.value = 'member'
-}
-
-const onMemberSearchChange = (val) => {
-  if (!val) {
-    selectedMember.value = null
-  }
-}
-
-const clearMember = () => {
-  selectedMember.value = null
-  memberSearch.value = ''
-}
-
 const calcCurrentCost = (table) => {
   const order = table.current_order
   const dur = Math.max(Math.floor((Date.now() - new Date(order.start_time.replace(' ', 'T'))) / 60000), 1)
@@ -603,6 +382,8 @@ const loadData = async () => {
     tables.value = await getTables(true)
     areas.value = await getAreas()
     members.value = await getMembers()
+    const settings = await getSettings()
+    packages.value = settings.packages || []
   } catch (e) { console.error(e) }
 }
 
@@ -617,10 +398,6 @@ const onTableClick = async (item) => {
 sel.value = { ...item, rate_per_hour: areaRate }
 
   if (item.status === '空闲') {
-    customerType.value = 'walkin'
-    memberSearch.value = ''
-    selectedMember.value = null
-    walkinForm.value = { name: '', phone: '', useDeposit: false, deposit: 100, payment_method: 'cash' }
     openDlg.value = true
   } else if (item.status === '使用中' && item.current_order?.member_id) {
     return router.push(`/members/${item.current_order.member_id}`)
@@ -663,45 +440,6 @@ sel.value = { ...item, rate_per_hour: areaRate }
       pay.value = { total, discount: disc, final: fin, deposit, change: Math.max(0, change) }
       closeDlg.value = true
     } catch(e) { ElMessage.error(String(e) || t('operationFailed')) }
-  }
-}
-
-const cfmOpen = async () => {
-  submitting.value = true
-  try {
-    let memberId = null
-    let deposit = null
-
-    if (customerType.value === 'member' && selectedMember.value) {
-      memberId = selectedMember.value.id
-    } else if (customerType.value === 'walkin' && walkinForm.value.useDeposit) {
-      deposit = walkinForm.value.deposit
-    }
-
-    await openTable({
-      table_id: sel.value.id,
-      member_id: memberId,
-      customer_name: walkinForm.value.name || null,
-      customer_phone: walkinForm.value.phone || null,
-      deposit: deposit,
-      payment_method: walkinForm.value.payment_method
-    })
-
-    ElMessage.success({ message: `${sel.value.name} ${t('openSuccess')}！`, grouping: true })
-    openDlg.value = false
-    await loadData()
-  } catch(e) {
-    const errMsg = e.response?.data?.error || ''
-    if (errMsg.includes('余额不足')) {
-      ElMessage.warning(t('insufficientBalance'))
-      openDlg.value = false
-      selectedMember.value = null
-      customerType.value = 'walkin'
-      return
-    }
-    ElMessage.error(String(e) || t('operationFailed'))
-  } finally {
-    submitting.value = false
   }
 }
 
@@ -895,7 +633,7 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 500;
   color: var(--accent-primary);
-  background: rgba(88,166,255,0.1);
+  background: rgba(88,166,255,0.12);
   padding: 2px 10px;
   border-radius: 10px;
   margin-left: 4px;

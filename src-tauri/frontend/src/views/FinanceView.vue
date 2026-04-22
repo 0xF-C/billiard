@@ -206,7 +206,7 @@
     </div>
 
     <!-- {{ t('CheckoutConfirmDialog') }} -->
-    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="480px" :close-on-click-modal="false">
+    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="480px" :close-on-click-modal="false" top="5vh" append-to-body>
       <div class="checkout-content" v-if="target">
         <div class="checkout-header">
           <div class="table-info">

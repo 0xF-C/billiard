@@ -119,7 +119,7 @@
     </div>
 
     <!-- {{ t('AddExpenseDialog') }} -->
-    <el-dialog v-model="showAddExpense" :title="t('addExpense')" width="450px">
+    <el-dialog v-model="showAddExpense" :title="t('addExpense')" width="450px" top="5vh" append-to-body>
       <el-form :model="expenseForm" label-width="80px">
         <el-form-item :label="t('date')">
           <el-date-picker v-model="expenseForm.date" type="date" value-format="YYYY-MM-DD" />

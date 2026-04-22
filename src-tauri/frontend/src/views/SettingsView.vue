@@ -62,7 +62,7 @@
     </div>
 
     <!-- {{ t('PrintSettingsDialog') }} -->
-    <el-dialog v-model="showPrinterDlg" :title="t('printerConfig')" width="800px" class="settings-dialog">
+    <el-dialog v-model="showPrinterDlg" :title="t('printerConfig')" width="800px" class="settings-dialog" top="5vh" append-to-body>
       <div class="dialog-content">
         <div class="printer-header">
           <span class="printer-header-title">{{ t('printerManage') }}</span>
@@ -125,7 +125,7 @@
     </el-dialog>
 
     <!-- {{ t('AddEditPrinterDialog') }} -->
-    <el-dialog v-model="showPrinterForm" :title="editPrinterTarget ? t('editPrinter') : t('addPrinter')" width="500px" class="settings-dialog">
+    <el-dialog v-model="showPrinterForm" :title="editPrinterTarget ? t('editPrinter') : t('addPrinter')" width="500px" class="settings-dialog" top="5vh" append-to-body>
       <div class="dialog-content">
         <div class="form-item">
           <label>{{ t('printerName') }}</label>
@@ -180,7 +180,7 @@
     </el-dialog>
 
     <!-- {{ t('UserManagementDialog') }} -->
-    <el-dialog v-model="showUserDlg" :title="t('userPermission')" width="700px" class="settings-dialog">
+    <el-dialog v-model="showUserDlg" :title="t('userPermission')" width="700px" class="settings-dialog" top="5vh" append-to-body>
       <div class="dialog-content">
         <div class="section-header">
           <span>{{ t('memberList') }}</span>
@@ -211,7 +211,7 @@
     </el-dialog>
 
     <!-- {{ t('AddEditUserDialog') }} -->
-    <el-dialog v-model="showUserForm" :title="editUserTarget ? t('edit') : t('add')" width="400px" class="settings-dialog">
+    <el-dialog v-model="showUserForm" :title="editUserTarget ? t('edit') : t('add')" width="400px" class="settings-dialog" top="5vh" append-to-body>
       <div class="dialog-content">
         <div class="form-item">
           <label>{{ t('name') }}</label>
@@ -237,7 +237,7 @@
     </el-dialog>
 
     <!-- {{ t('BackupRestoreDialog') }} -->
-    <el-dialog v-model="showBackupDlg" :title="t('backupRestore')" width="480px" class="settings-dialog">
+    <el-dialog v-model="showBackupDlg" :title="t('backupRestore')" width="480px" class="settings-dialog" top="5vh" append-to-body>
       <div class="dialog-content">
         <div class="backup-card" @click="doBackup">
           <div class="backup-icon">

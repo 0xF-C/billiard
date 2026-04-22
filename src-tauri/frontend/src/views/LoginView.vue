@@ -85,6 +85,8 @@
       width="480px"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
+      top="5vh"
+      append-to-body
       class="setup-dialog"
     >
       <el-form :model="setupForm" label-width="100px">
@@ -108,6 +110,8 @@
       v-model="showDbPaths"
       :title="t('dbPathLabel')"
       width="500px"
+      top="5vh"
+      append-to-body
       class="db-path-dialog"
     >
       <div class="db-path-content">

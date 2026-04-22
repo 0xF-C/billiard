@@ -71,187 +71,21 @@
       </div>
     </div>
 
-    <el-dialog v-model="openDlg" :title="`${t('openTable')} - ${sel?.name}`" width="520px" :close-on-click-modal="false" class="open-table-dialog">
-      <div class="open-form" v-if="sel">
-        <div class="table-hero">
-          <div class="hero-icon" :class="sel.is_private ? 'private' : 'hall'">
-            <el-icon><component :is="sel.is_private ? 'House' : 'Grid'" /></el-icon>
-          </div>
-          <div class="hero-info">
-            <span class="hero-name">{{ sel.name }}</span>
-            <span class="hero-rate">¥{{ sel.rate_per_hour }}/{{ t('hour') }}</span>
-          </div>
-          <el-tag :type="sel.is_private ? 'warning' : 'success'" size="large">
-            {{ sel.is_private ? t('privateRoom') : t('hall') }}
-          </el-tag>
-        </div>
+    <OpenTableDialog
+      v-model="openDlg"
+      :table="sel"
+      :members="members"
+      :packages="packages"
+      @success="load"
+    />
 
-        <div class="customer-type-section">
-          <div class="section-title">{{ t('member') }}/{{ t('walkIn') }}</div>
-          <div class="customer-tabs">
-            <div :class="['tab-btn', { active: customerType === 'walkin' }]" @click="customerType = 'walkin'">
-              <el-icon><UserFilled /></el-icon>
-              <span>{{ t('walkIn') }}</span>
-            </div>
-            <div :class="['tab-btn', { active: customerType === 'member' }]" @click="customerType = 'member'">
-              <el-icon><Avatar /></el-icon>
-              <span>{{ t('member') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="customerType === 'member'" class="member-section">
-          <div class="section-title">{{ t('searchMember') }}</div>
-          <el-autocomplete
-            v-model="memberSearch"
-            :fetch-suggestions="searchMembers"
-            :trigger-on-focus="false"
-            clearable
-            :placeholder="t('search') + ' ' + t('name') + '/' + t('phone')"
-            size="large"
-            class="member-search"
-            @select="onMemberSelect"
-            @change="onMemberSearchChange"
-          >
-            <template #prefix><el-icon><Search /></el-icon></template>
-            <template #default="{ item }">
-              <div class="member-option">
-                <div class="option-left">
-                  <el-avatar :size="32" style="background: var(--accent-primary);">{{ item.name?.charAt(0) }}</el-avatar>
-                  <div class="option-info">
-                    <span class="option-name">{{ item.name }}</span>
-                    <span class="option-phone">{{ item.phone }}</span>
-                  </div>
-                </div>
-                <div class="option-right">
-                  <el-tag v-if="getMemberDiscount(item) > 0" type="success" size="small">{{ getMemberDiscount(item) }}{{ t('discount') }}</el-tag>
-                  <span class="option-balance">¥{{ item.balance?.toFixed(2) }}</span>
-                </div>
-              </div>
-            </template>
-          </el-autocomplete>
-
-          <div v-if="selectedMember" class="selected-member-card">
-            <div class="member-info-left">
-              <el-avatar :size="48" style="background: var(--accent-success);">{{ selectedMember.name?.charAt(0) }}</el-avatar>
-              <div class="member-details">
-                <span class="member-name">{{ selectedMember.name }}</span>
-                <span class="member-phone">{{ selectedMember.phone }}</span>
-              </div>
-            </div>
-            <div class="member-info-right">
-              <div class="member-balance-display">
-                <span class="balance-label">{{ t('balance') }}</span>
-                <span class="balance-amount">¥{{ selectedMember.balance?.toFixed(2) }}</span>
-              </div>
-              <el-tag type="success" size="large">{{ getMemberDiscount(selectedMember) }}{{ t('discount') }}</el-tag>
-            </div>
-            <el-button text type="danger" :icon="Close" @click="clearMember">{{ t('cancel') }}</el-button>
-          </div>
-        </div>
-
-        <div v-else class="walkin-section">
-          <div class="section-title">{{ t('walkInInfo') }}</div>
-          <div class="walkin-form">
-            <div class="form-row">
-              <div class="form-item">
-                <label>{{ t('name') }}</label>
-                <el-input v-model="walkinForm.name" :placeholder="t('optional')" clearable>
-                  <template #prefix><el-icon><User /></el-icon></template>
-                </el-input>
-              </div>
-              <div class="form-item">
-                <label>{{ t('phone') }}</label>
-                <el-input v-model="walkinForm.phone" :placeholder="t('optional')" clearable>
-                  <template #prefix><el-icon><Phone /></el-icon></template>
-                </el-input>
-              </div>
-            </div>
-            <div class="deposit-section">
-              <div class="deposit-header">
-                <span class="deposit-title">{{ t('deposit') }}</span>
-                <el-switch v-model="walkinForm.useDeposit" :active-text="t('confirm')" :inactive-text="t('cancel')" />
-              </div>
-              <div v-if="walkinForm.useDeposit" class="deposit-options">
-                <div class="quick-amounts">
-                  <el-button v-for="amt in [50, 100, 200, 500]" :key="amt"
-                    :class="['amount-btn', { active: walkinForm.deposit === amt }]" @click="walkinForm.deposit = amt">
-                    ¥{{ amt }}
-                  </el-button>
-                </div>
-                <div class="custom-deposit">
-                  <el-input-number v-model="walkinForm.deposit" :min="0" :step="10" controls-position="right" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="package-section">
-          <div class="section-title">{{ t('selectPackage') }}</div>
-          <div class="package-options">
-            <div :class="['package-btn', { active: !selectedPackage }]" @click="selectedPackage = null">
-              <el-icon><Clock /></el-icon>
-              <span>{{ t('noPackage') }}</span>
-              <span class="pkg-rate">¥{{ sel.rate_per_hour }}/{{ t('hoursShort') }}</span>
-            </div>
-            <div
-              v-for="pkg in availablePackages"
-              :key="pkg.id"
-              :class="['package-btn', pkg.type, { active: selectedPackage?.id === pkg.id }]"
-              @click="selectedPackage = pkg"
-            >
-              <el-icon><Ticket /></el-icon>
-              <div class="pkg-info-col">
-                <span class="pkg-name">{{ pkg.name }}</span>
-                <span v-if="pkg.start_time || pkg.end_time" class="pkg-time">
-                  {{ pkg.start_time || '00:00' }} - {{ pkg.end_time || '23:59' }}
-                </span>
-              </div>
-              <span class="pkg-price">¥{{ pkg.price }}</span>
-              <span class="pkg-rate">{{ pkg.hours }}{{ t('hoursShort') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="cost-preview">
-          <div class="preview-title">{{ t('amount') }}</div>
-          <div class="preview-content">
-            <div v-if="selectedPackage" class="preview-row highlight package-row">
-              <span>{{ t('packageIncluded') }}</span>
-              <span class="pkg-info">{{ selectedPackage.name }} ¥{{ selectedPackage.price }}</span>
-            </div>
-            <div v-else class="preview-row">
-              <span>{{ t('tableRate') }}</span>
-              <span>¥{{ sel.rate_per_hour }}/{{ t('hour') }}</span>
-            </div>
-            <div v-if="customerType === 'member' && selectedMember" class="preview-row highlight">
-              <span>{{ t('memberDiscount') }}</span>
-              <span class="discount-text">{{ getMemberDiscount(selectedMember) }}{{ t('discount') }}</span>
-            </div>
-            <div class="preview-row highlight">
-              <span>{{ t('actualPayment') }}</span>
-              <span class="pay-amount">{{ selectedPackage ? '¥' + selectedPackage.price : '~ ¥' + previewCost + '/' + t('hours') }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <el-button size="large" @click="openDlg=false">{{ t('cancel') }}</el-button>
-        <el-button type="success" size="large" @click="cfmOpen" :loading="submitting">
-          <el-icon><Check /></el-icon>
-          {{ t('confirmOpen') }}
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
+    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false" top="5vh" append-to-body>
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">
           <div class="checkout-table"><el-icon><Grid /></el-icon><span>{{ sel?.name }}</span></div>
         </div>
         <div class="checkout-details">
-          <div class="detail-row"><span class="detail-label">{{ t('memberName') }}</span><span class="detail-value">{{ preview.member_name || walkinName || t('walkIn') }}</span></div>
+          <div class="detail-row"><span class="detail-label">{{ t('memberName') }}</span><span class="detail-value">{{ preview.member_name || t('walkIn') }}</span></div>
           <div class="detail-row"><span class="detail-label">{{ t('startTime') }}</span><span class="detail-value">{{ formatDateTime(preview.start_time) }}</span></div>
           <div class="detail-row highlight"><span class="detail-label">{{ t('consumptionDuration') }}</span><span class="detail-value time">{{ getDur(preview.start_time) }}</span></div>
           <div class="detail-row" v-if="preview.package_name">
@@ -302,7 +136,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="cancelDlg" :title="t('cancelOrder')" width="420px">
+    <el-dialog v-model="cancelDlg" :title="t('cancelOrder')" width="420px" top="5vh" append-to-body>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="padding:12px;background:var(--bg-primary);border-radius:8px;">
           <div style="display:flex;justify-content:space-between;padding:4px 0;">
@@ -335,7 +169,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showQuickSell" :title="t('quickSell')" width="900px" :close-on-click-modal="false" class="pos-dialog">
+    <el-dialog v-model="showQuickSell" :title="t('quickSell')" width="900px" :close-on-click-modal="false" top="5vh" append-to-body class="pos-dialog">
       <div class="pos-layout">
         <div class="pos-products">
           <div class="pos-search">
@@ -431,7 +265,7 @@
       </div>
     </el-dialog>
 
-    <el-dialog v-model="showReceipt" :title="t('receipt')" width="360px" class="receipt-dialog">
+    <el-dialog v-model="showReceipt" :title="t('receipt')" width="360px" top="5vh" append-to-body class="receipt-dialog">
       <div class="receipt-content" ref="receiptRef">
         <div class="title">{{ shopName || t('billiardHall') }}</div>
         <div class="time">{{ currentReceiptTime }}</div>
@@ -472,10 +306,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ElMessage, ElIcon, ElDialog, ElButton, ElSelect, ElOption, ElDivider, ElAutocomplete, ElAvatar, ElInputNumber, ElSwitch, ElInput } from 'element-plus'
-import { Grid, User, Money, Clock, Location, Warning, TrendCharts, DataLine, Timer, UserFilled, Avatar, Search, Close, Phone, Check, House, Ticket, Goods, Plus, More, Printer, Coin, ChatDotRound, Wallet, ShoppingCart, Minus, Delete, CircleClose } from '@element-plus/icons-vue'
-import { getRevenueTrend, getTableUsage, getHourlyRevenue, getTables, getAreas, getMembers, getOrderByTable, openTable, closeTable, getSettings, checkExpiredPackages, autoCloseExpired, autoCloseExhausted, getInventory, saleBatch, cancelOrder, realtimeCheck, printReceipt as apiPrintReceipt } from '../api'
+import { ElMessage, ElIcon, ElDialog, ElButton, ElSelect, ElOption, ElDivider, ElInput } from 'element-plus'
+import { Grid, User, Money, Clock, Location, Warning, TrendCharts, DataLine, Timer, Search, Goods, Plus, More, Printer, Coin, ChatDotRound, Wallet, ShoppingCart, Minus, Delete, CircleClose } from '@element-plus/icons-vue'
+import { getRevenueTrend, getTableUsage, getHourlyRevenue, getTables, getAreas, getMembers, getOrderByTable, closeTable, getSettings, checkExpiredPackages, autoCloseExpired, autoCloseExhausted, getInventory, saleBatch, cancelOrder, realtimeCheck, printReceipt as apiPrintReceipt } from '../api'
 import { t, currentLang } from '../i18n'
+import OpenTableDialog from '../components/OpenTableDialog.vue'
 
 const trend = ref([])
 const usage = ref([])
@@ -497,12 +332,6 @@ const sel = ref(null)
 const preview = ref(null)
 const pay = ref({ total: 0, discount: 0, final: 0, deposit: 0, change: 0 })
 const submitting = ref(false)
-
-const customerType = ref('walkin')
-const memberSearch = ref('')
-const selectedMember = ref(null)
-const selectedPackage = ref(null)
-const walkinForm = ref({ name: '', phone: '', useDeposit: false, deposit: 100 })
 
 const allProducts = ref([])
 const showQuickSell = ref(false)
@@ -736,79 +565,6 @@ const loadProducts = async () => {
   }
 }
 
-const previewCost = computed(() => {
-  if (!sel.value) return '0.00'
-  // Ensure rate_per_hour is a valid number
-  let rate = 0
-  if (sel.value.rate_per_hour !== undefined && sel.value.rate_per_hour !== null) {
-    rate = parseFloat(sel.value.rate_per_hour)
-  }
-  if (isNaN(rate) || rate < 0) rate = 0
-
-  if (customerType.value === 'member' && selectedMember.value) {
-    const disc = getMemberDiscount(selectedMember.value)
-    if (!disc) return rate.toFixed(2)
-    const discNum = parseFloat(disc)
-    if (isNaN(discNum) || discNum <= 0) return rate.toFixed(2)
-    return (rate * discNum / 10).toFixed(2)
-  }
-  return rate.toFixed(2)
-})
-
-const isPackageTimeValid = (pkg) => {
-  const now = new Date()
-  const currentHour = now.getHours()
-  const currentMin = now.getMinutes()
-  const currentTime = currentHour * 60 + currentMin
-
-  const startTime = pkg.start_time || ''
-  const endTime = pkg.end_time || ''
-
-  if (!startTime && !endTime) return true
-
-  // 跨天判断
-  const [sh, sm] = startTime ? startTime.split(':').map(Number) : [0, 0]
-  const [eh, em] = endTime ? endTime.split(':').map(Number) : [23, 59]
-  const startMinutes = sh * 60 + sm
-  const endMinutes = eh * 60 + em
-
-  if (endMinutes > startMinutes) {
-    // 不跨天：直接区间判断
-    if (startTime && currentTime < startMinutes) return false
-    if (endTime && currentTime > endMinutes) return false
-  } else {
-    // 跨天（如23:00-06:00）：currentTime >= startTime 或 currentTime <= endMinutes
-    if (startTime && currentTime < startMinutes && currentTime > endMinutes) return false
-    if (endTime && currentTime > endMinutes && currentTime < startMinutes) return false
-  }
-  return true
-}
-
-const availablePackages = computed(() => {
-  if (!packages.value || !sel.value) return []
-  return packages.value.filter(pkg => {
-    const areaIds = pkg.area_ids
-    const tableIds = pkg.table_ids
-    
-    if (areaIds) {
-      const areaList = areaIds.split(',').map(Number)
-      if (!areaList.includes(sel.value.area_id)) return false
-    } else if (tableIds && tableIds !== '*') {
-      const tableList = tableIds.split(',').map(Number)
-      if (!tableList.includes(sel.value.id)) return false
-    }
-    
-    return isPackageTimeValid(pkg)
-  })
-})
-
-const walkinName = computed(() => {
-  if (customerType.value === 'walkin' && walkinForm.value.name) {
-    return walkinForm.value.name
-  }
-  return ''
-})
-
 const maxRevenue = computed(() => Math.max(...(trend.value || []).map(x => x.revenue), 1))
 const avgHourly = computed(() => (hourly.value && Array.isArray(hourly.value) && hourly.value.length) ? hourly.value.reduce((a,b) => a+b.revenue,0) / hourly.value.length : 0)
 
@@ -850,38 +606,6 @@ const getDur = (time) => {
 }
 
 const rnd = (n, d) => Math.round(n * Math.pow(10, d)) / Math.pow(10, d)
-
-const getMemberDiscount = (member) => {
-  if (!member || !member.discount || member.discount >= 1) return ''
-  return (member.discount * 10).toFixed(1)  // 0.8 → "8.0"
-}
-
-const searchMembers = (query, callback) => {
-  if (!query) { callback([]); return }
-  const kw = query.toLowerCase()
-  const results = members.value
-    .filter(m => m.phone.includes(kw) || m.name.toLowerCase().includes(kw))
-    .slice(0, 10)
-    .map(m => ({ ...m, value: `${m.name} - ${m.phone}` }))
-  callback(results)
-}
-
-const onMemberSelect = (item) => {
-  selectedMember.value = item
-  memberSearch.value = ''
-  customerType.value = 'member'
-}
-
-const onMemberSearchChange = (val) => {
-  if (!val) {
-    selectedMember.value = null
-  }
-}
-
-const clearMember = () => {
-  selectedMember.value = null
-  memberSearch.value = ''
-}
 
 const groupedTables = computed(() => {
   currentLang.value
@@ -930,11 +654,6 @@ const onTableClick = async (item) => {
   sel.value = { ...item, rate_per_hour: finalRate }
 
   if (item.status === '空闲') {
-    customerType.value = 'walkin'
-    memberSearch.value = ''
-    selectedMember.value = null
-    selectedPackage.value = null
-    walkinForm.value = { name: '', phone: '', useDeposit: false, deposit: 100 }
     openDlg.value = true
   } else {
     try {
@@ -1018,45 +737,6 @@ const cfmCancel = async () => {
     await load()
   } catch(e) {
     ElMessage.error(e.response?.data?.error || t('operationFailed'))
-  }
-}
-
-const cfmOpen = async () => {
-  submitting.value = true
-  try {
-    let memberId = null
-    let deposit = null
-
-    if (customerType.value === 'member' && selectedMember.value) {
-      memberId = selectedMember.value.id
-    } else if (customerType.value === 'walkin' && walkinForm.value.useDeposit) {
-      deposit = walkinForm.value.deposit
-    }
-
-    await openTable({
-      table_id: sel.value.id,
-      member_id: memberId,
-      customer_name: walkinForm.value.name || null,
-      customer_phone: walkinForm.value.phone || null,
-      deposit: deposit,
-      package_id: selectedPackage.value?.id || null
-    })
-
-    ElMessage.success({ message: `${sel.value.name} ${t('openSuccess')}！`, grouping: true })
-    openDlg.value = false
-    await load()
-  } catch(e) {
-    const errMsg = e.response?.data?.error || ''
-    if (errMsg.includes('余额不足')) {
-      ElMessage.warning('会员卡余额不足，请先充值')
-      openDlg.value = false
-      selectedMember.value = null
-      customerType.value = 'walkin'
-      return
-    }
-    ElMessage.error(e.response?.data?.error || t('operationFailed'))
-  } finally {
-    submitting.value = false
   }
 }
 
@@ -1326,10 +1006,11 @@ onUnmounted(() => { clearInterval(timer); clearInterval(realtimeTimer) })
   font-size: 11px;
   font-weight: 500;
   color: var(--accent-primary);
-  background: rgba(88, 166, 255, 0.1);
+  background: rgba(88, 166, 255, 0.12);
   padding: 2px 8px;
   border-radius: 10px;
   margin-left: 8px;
+  border: 1px solid rgba(88, 166, 255, 0.2);
 }
 
 .area-stats { display: flex; gap: 8px; }

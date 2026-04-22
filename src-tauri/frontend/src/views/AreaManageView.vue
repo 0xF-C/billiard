@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <el-dialog v-model="formDlg" :title="editTarget ? t('edit') : t('add')" width="400px" :close-on-click-modal="false">
+    <el-dialog v-model="formDlg" :title="editTarget ? t('edit') : t('add')" width="400px" :close-on-click-modal="false" top="5vh" append-to-body>
       <el-form :model="form" label-position="top">
         <el-form-item :label="t('name')">
           <el-input v-model="form.name" :placeholder="t('name')" />

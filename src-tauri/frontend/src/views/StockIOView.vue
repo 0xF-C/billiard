@@ -76,7 +76,7 @@
     </div>
 
     <!-- {{ t('StockInDialog') }} -->
-    <el-dialog v-model="showStockIn" :title="t('stockIn')" width="500px">
+    <el-dialog v-model="showStockIn" :title="t('stockIn')" width="500px" top="5vh" append-to-body>
       <el-form :model="stockInForm" label-width="80px">
         <el-form-item :label="t('product')">
           <el-select v-model="stockInForm.productId" filterable :placeholder="t('selectProduct')">
@@ -103,7 +103,7 @@
     </el-dialog>
 
     <!-- {{ t('StockOutDialog') }} -->
-    <el-dialog v-model="showStockOut" :title="t('stockOut')" width="500px">
+    <el-dialog v-model="showStockOut" :title="t('stockOut')" width="500px" top="5vh" append-to-body>
       <el-form :model="stockOutForm" label-width="80px">
         <el-form-item :label="t('product')">
           <el-select v-model="stockOutForm.productId" filterable :placeholder="t('selectProduct')">

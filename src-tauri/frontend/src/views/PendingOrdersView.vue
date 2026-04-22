@@ -53,7 +53,7 @@
     </div>
 
     <!-- {{ t('CreatePendingOrderDialog') }} -->
-    <el-dialog v-model="showCreateDlg" :title="t('createPendingOrder')" width="500px">
+    <el-dialog v-model="showCreateDlg" :title="t('createPendingOrder')" width="500px" top="5vh" append-to-body>
       <el-form :model="form" label-width="100px">
         <el-form-item :label="t('customerName')">
           <el-input v-model="form.customer_name" :placeholder="t('optional')" />
@@ -80,7 +80,7 @@
     </el-dialog>
 
     <!-- {{ t('PendingOrderDetailDialog') }} -->
-    <el-dialog v-model="detailDlg" :title="t('orderDetails')" width="480px">
+    <el-dialog v-model="detailDlg" :title="t('orderDetails')" width="480px" top="5vh" append-to-body>
       <div v-if="selectedOrder" class="detail-content">
         <div class="detail-row">
           <span class="label">{{ t('orderNo') }}:</span>

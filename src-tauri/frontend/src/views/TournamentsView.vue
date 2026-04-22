@@ -62,7 +62,7 @@
       </div>
     </div>
 
-    <el-dialog v-model="showAdd" :title="t('createTournament')" width="550px">
+    <el-dialog v-model="showAdd" :title="t('createTournament')" width="550px" top="5vh" append-to-body>
       <el-form :model="form" label-width="100px">
         <el-form-item :label="t('tournamentName')">
           <el-input v-model="form.name" />

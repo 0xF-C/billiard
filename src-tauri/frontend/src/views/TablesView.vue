@@ -75,8 +75,10 @@
     <el-dialog
       v-model="openDlg"
       :title="openDlgTitle"
-      width="520px"
+      width="480px"
       :close-on-click-modal="false"
+      top="5vh"
+      append-to-body
       class="open-table-dialog"
     >
       <div class="open-form" v-if="sel">
@@ -300,7 +302,7 @@
     </el-dialog>
 
     <!-- {{ t('CheckoutDialog') }} -->
-    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
+    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false" top="5vh" append-to-body>
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">
           <div class="checkout-table"><el-icon><Grid /></el-icon><span>{{ sel?.name }}</span></div>

@@ -81,7 +81,7 @@
     </div>
 
     <!-- {{ t('DetailDialog') }} -->
-    <el-dialog v-model="showDetail" :title="t('salaryDetail')" width="600px">
+    <el-dialog v-model="showDetail" :title="t('salaryDetail')" width="600px" top="5vh" append-to-body>
       <template v-if="selectedStaff">
         <el-descriptions :column="2" border>
           <el-descriptions-item :label="t('employee')">{{ selectedStaff.name }}</el-descriptions-item>

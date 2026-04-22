@@ -139,7 +139,7 @@
     </div>
 
     <!-- {{ t('PointsAdjustDialog') }} -->
-    <el-dialog v-model="showAdjust" :title="adjustType === 'add' ? t('addPoints') : t('deductPoints')" width="400px">
+    <el-dialog v-model="showAdjust" :title="adjustType === 'add' ? t('addPoints') : t('deductPoints')" width="400px" top="5vh" append-to-body>
       <el-form :model="adjustForm" label-width="80px">
         <el-form-item :label="t('member')">
           <el-input :value="adjustMember?.name" disabled />
@@ -161,7 +161,7 @@
     </el-dialog>
 
     <!-- {{ t('PointsRulesDialog') }} -->
-    <el-dialog v-model="showSettings" :title="t('pointsRules')" width="500px">
+    <el-dialog v-model="showSettings" :title="t('pointsRules')" width="500px" top="5vh" append-to-body>
       <el-form :model="rulesForm" label-width="120px">
         <el-form-item :label="t('pointsPerYuan')">
           <el-input-number v-model="rulesForm.pointsPerYuan" :min="0" :max="100" />
@@ -186,7 +186,7 @@
     </el-dialog>
 
     <!-- {{ t('PointsHistoryDialog') }} -->
-    <el-dialog v-model="showHistoryDialog" :title="t('pointsHistory')" width="600px">
+    <el-dialog v-model="showHistoryDialog" :title="t('pointsHistory')" width="600px" top="5vh" append-to-body>
       <el-table :data="pointsHistory" stripe max-height="400">
         <el-table-column prop="created_at" :label="t('time')" width="160">
           <template #default="{ row }">

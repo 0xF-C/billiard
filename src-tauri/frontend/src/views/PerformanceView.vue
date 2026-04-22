@@ -88,7 +88,7 @@
       </el-table>
     </div>
 
-    <el-dialog v-model="showConfig" :title="t('performanceConfig')" width="500px">
+    <el-dialog v-model="showConfig" :title="t('performanceConfig')" width="500px" top="5vh" append-to-body>
       <el-form label-width="120px">
         <el-form-item :label="t('serviceWeight')">
           <el-slider :model-value="40" :max="100" show-input />

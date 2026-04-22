@@ -122,7 +122,7 @@
       </el-table>
     </div>
 
-    <el-dialog v-model="showAddChannel" :title="t('addChannel')" width="400px">
+    <el-dialog v-model="showAddChannel" :title="t('addChannel')" width="400px" top="5vh" append-to-body>
       <el-form label-width="80px">
         <el-form-item :label="t('channelName')">
           <el-input v-model="newChannel.name" />

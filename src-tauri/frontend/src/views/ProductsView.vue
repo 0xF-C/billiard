@@ -105,7 +105,7 @@
       </div>
     </div>
 
-    <el-dialog v-model="showRecords" :title="t('salesRecords')" width="700px">
+    <el-dialog v-model="showRecords" :title="t('salesRecords')" width="700px" top="5vh" append-to-body>
       <el-table :data="salesRecords" stripe>
         <el-table-column :label="t('productName')" prop="product_name" />
         <el-table-column :label="t('quantity')" prop="quantity" width="80" />

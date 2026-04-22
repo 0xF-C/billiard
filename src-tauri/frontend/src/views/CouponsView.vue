@@ -56,7 +56,7 @@
     </div>
 
     <!-- {{ t('CreateCouponDialog') }} -->
-    <el-dialog v-model="showAdd" :title="t('createCoupon')" width="500px">
+    <el-dialog v-model="showAdd" :title="t('createCoupon')" width="500px" top="5vh" append-to-body>
       <el-form :model="form" label-width="100px">
         <el-form-item :label="t('couponName')">
           <el-input v-model="form.name" />

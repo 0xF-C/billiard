@@ -26,7 +26,7 @@
     </div>
 
     <!-- {{ t('EditDiscountDialog') }} -->
-    <el-dialog v-model="editDlg" :title="t('edit') + ' - ' + (editTarget?.name || '')" width="360px">
+    <el-dialog v-model="editDlg" :title="t('edit') + ' - ' + (editTarget?.name || '')" width="360px" top="5vh" append-to-body>
       <div class="edit-discount-form" v-if="editTarget">
         <div class="discount-label">{{ t('discount') }}</div>
         <div class="discount-input-group">

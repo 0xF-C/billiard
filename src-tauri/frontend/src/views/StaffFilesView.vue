@@ -77,7 +77,7 @@
     </div>
 
     <!-- {{ t('AddStaffDialog') }} -->
-    <el-dialog v-model="showAdd" :title="t('addStaff')" width="600px">
+    <el-dialog v-model="showAdd" :title="t('addStaff')" width="600px" top="5vh" append-to-body>
       <el-form :model="staffForm" label-width="100px">
         <el-row :gutter="20">
           <el-col :span="12">
@@ -143,7 +143,7 @@
     </el-dialog>
 
     <!-- {{ t('DetailDialog') }} -->
-    <el-dialog v-model="showDetail" :title="t('staffDetail')" width="600px">
+    <el-dialog v-model="showDetail" :title="t('staffDetail')" width="600px" top="5vh" append-to-body>
       <el-descriptions :column="2" border v-if="selectedStaff">
         <el-descriptions-item :label="t('name')">{{ selectedStaff.name }}</el-descriptions-item>
         <el-descriptions-item :label="t('employeeId')">{{ selectedStaff.employeeId }}</el-descriptions-item>

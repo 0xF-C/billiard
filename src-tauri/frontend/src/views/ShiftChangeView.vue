@@ -78,7 +78,7 @@
     </div>
 
     <!-- {{ t('shiftDialogTitle') }} -->
-    <el-dialog v-model="showShiftDialog" :title="t('shiftChangeConfirm')" width="600px">
+    <el-dialog v-model="showShiftDialog" :title="t('shiftChangeConfirm')" width="600px" top="5vh" append-to-body>
       <div class="shift-summary">
         <h4>{{ t('shiftSummary') }}</h4>
         <div class="summary-item">

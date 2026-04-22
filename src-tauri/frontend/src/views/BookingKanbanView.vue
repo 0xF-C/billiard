@@ -76,7 +76,7 @@
     </div>
 
     <!-- {{ t('AddBookingDialog') }} -->
-    <el-dialog v-model="showAdd" :title="t('addBooking')" width="500px">
+    <el-dialog v-model="showAdd" :title="t('addBooking')" width="500px" top="5vh" append-to-body>
       <el-form :model="addForm" :rules="addRules" ref="addFormRef" label-width="100px">
         <el-form-item :label="t('table')" prop="tableId">
           <el-select v-model="addForm.tableId" :placeholder="t('selectTable')">
@@ -125,7 +125,7 @@
     </el-dialog>
 
     <!-- {{ t('BookingDetailDialog') }} -->
-    <el-dialog v-model="showDetail" :title="t('bookingDetail')" width="450px">
+    <el-dialog v-model="showDetail" :title="t('bookingDetail')" width="450px" top="5vh" append-to-body>
       <el-descriptions :column="1" border v-if="selectedBooking">
         <el-descriptions-item :label="t('table')">{{ selectedBooking.tableName }}</el-descriptions-item>
         <el-descriptions-item :label="t('time')">

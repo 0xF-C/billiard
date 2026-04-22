@@ -125,7 +125,7 @@
     </div>
 
     <!-- {{ t('ConfigDialog') }} -->
-    <el-dialog v-model="showConfig" :title="t('configPayment')" width="500px">
+    <el-dialog v-model="showConfig" :title="t('configPayment')" width="500px" top="5vh" append-to-body>
       <el-form label-width="120px">
         <el-divider content-position="left">{{ t('wechat') }}</el-divider>
         <el-form-item :label="t('feeRate')">

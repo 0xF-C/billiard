@@ -68,7 +68,7 @@
     </div>
 
     <!-- {{ t('AddEditDialog') }} -->
-    <el-dialog v-model="formDlg" :title="editTarget ? t('editTable') : t('addTable')" width="520px" :close-on-click-modal="false" class="table-form-dialog">
+    <el-dialog v-model="formDlg" :title="editTarget ? t('editTable') : t('addTable')" width="520px" :close-on-click-modal="false" top="5vh" append-to-body class="table-form-dialog">
       <div class="form-body">
         <div class="form-icon-wrap">
           <el-icon class="form-big-icon"><Box /></el-icon>
@@ -107,7 +107,7 @@
     </el-dialog>
 
     <!-- {{ t('QRDialog') }} -->
-    <el-dialog v-model="qrDlg" :title="qrTable ? qrTable.name + ' - ' + t('scanQR') : ''" width="360px" :close-on-click-modal="false">
+    <el-dialog v-model="qrDlg" :title="qrTable ? qrTable.name + ' - ' + t('scanQR') : ''" width="360px" :close-on-click-modal="false" top="5vh" append-to-body>
       <div class="qr-content" v-if="qrTable">
         <div class="qr-wrapper">
           <canvas ref="qrCanvas"></canvas>

@@ -169,7 +169,7 @@
     </div>
 
     <!-- {{ t('AddPackageDialog') }} -->
-    <el-dialog v-model="showPackageDlg" :title="t('addPackage')" width="500px" class="package-dialog">
+    <el-dialog v-model="showPackageDlg" :title="t('addPackage')" width="500px" class="package-dialog" top="5vh" append-to-body>
       <div class="package-form">
         <div class="form-item">
           <label>{{ t('packageName') }}</label>

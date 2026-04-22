@@ -74,7 +74,7 @@
       </el-table>
     </div>
 
-    <el-dialog v-model="showAdd" :title="t('addLoss')" width="450px">
+    <el-dialog v-model="showAdd" :title="t('addLoss')" width="450px" top="5vh" append-to-body>
       <el-form :model="form" label-width="80px">
         <el-form-item :label="t('date')">
           <el-date-picker v-model="form.date" type="date" value-format="YYYY-MM-DD" />

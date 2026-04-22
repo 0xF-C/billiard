@@ -117,7 +117,7 @@
     </div>
 
     <!-- {{ t('AlertConfigDialog') }} -->
-    <el-dialog v-model="showConfig" :title="t('alertConfig')" width="500px">
+    <el-dialog v-model="showConfig" :title="t('alertConfig')" width="500px" top="5vh" append-to-body>
       <el-form label-width="120px">
         <el-form-item :label="t('lowStockThreshold')">
           <el-input-number :model-value="10" :min="1" />
