@@ -71,7 +71,7 @@
       </div>
     </div>
 
-    <el-dialog v-model="openDlg" :title="`${t('openTable')} - ${sel?.name}`" width="720px" :close-on-click-modal="false" class="open-table-dialog">
+    <el-dialog v-model="openDlg" :title="`${t('openTable')} - ${sel?.name}`" width="520px" :close-on-click-modal="false" class="open-table-dialog">
       <div class="open-form" v-if="sel">
         <div class="table-hero">
           <div class="hero-icon" :class="sel.is_private ? 'private' : 'hall'">
