@@ -651,7 +651,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
     drop(stmt);
 
     let mut results = vec![];
-    for (order_id, table_id, table_name, member_id, deposit, _pkg_id, _pkg_price, _pkg_hours, start_time) in orders {
+    for (order_id, table_id, table_name, member_id, deposit, pkg_id, pkg_price, pkg_hours, start_time) in orders {
         let start = match DateTime::parse_from_rfc3339(&start_time) {
             Ok(s) => s,
             Err(_) => continue,
@@ -666,8 +666,20 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
             )
             .unwrap_or(30.0);
 
-        let bill_min = calc_bill_minutes_with_params(duration.max(1), &billing_params);
-        let total = (bill_min as f64 / 60.0) * hourly_rate;
+        let mut total = 0.0;
+        if let (Some(_), Some(price), Some(hours)) = (pkg_id, pkg_price, pkg_hours) {
+            total = price;
+            let pkg_duration = (hours * 60.0) as i64;
+            if duration > pkg_duration {
+                let extra_mins = duration - pkg_duration;
+                let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+                total += extra_fee;
+            }
+        }
+        if total == 0.0 {
+            let bill_min = calc_bill_minutes_with_params(duration.max(1), &billing_params);
+            total = (bill_min as f64 / 60.0) * hourly_rate;
+        }
 
         let mut available = deposit;
         if let Some(mid) = member_id {

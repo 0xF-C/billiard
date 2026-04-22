@@ -143,7 +143,10 @@ pub fn calc_bill_minutes_with_params(duration: i64, params: &BillingParams) -> i
         return 0;
     }
     let billable = duration - free;
-    if billable <= interval {
+    if billable == 0 {
+        return 0;
+    }
+    if billable < interval {
         return free + interval;
     }
     let full_units = billable / interval;

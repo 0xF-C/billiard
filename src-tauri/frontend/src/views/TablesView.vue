@@ -672,6 +672,7 @@ const cfmOpen = async () => {
     await openTable({
       table_id: sel.value.id,
       member_id: memberId,
+      package_id: selectedPackage.value?.id || null,
       customer_name: walkinForm.value.name || null,
       customer_phone: walkinForm.value.phone || null,
       deposit: deposit
