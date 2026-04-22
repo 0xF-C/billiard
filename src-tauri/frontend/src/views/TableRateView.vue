@@ -131,6 +131,27 @@
             </div>
           </div>
         </div>
+
+        <div class="rate-card">
+          <div class="rate-header">
+            <el-icon><Timer /></el-icon>
+            <span>{{ t('billingRules') }}</span>
+          </div>
+          <div class="rate-body">
+            <div class="rate-item">
+              <label>{{ t('freeMinutes') }} ({{ t('minutes') }})</label>
+              <el-input-number v-model="billingRules.freeMinutes" :min="0" :max="60" :step="1" />
+            </div>
+            <div class="rate-item">
+              <label>{{ t('billingInterval') }} ({{ t('minutes') }})</label>
+              <el-input-number v-model="billingRules.billingInterval" :min="1" :max="60" :step="5" />
+            </div>
+            <div class="rate-item">
+              <label>{{ t('applyRounding') }}</label>
+              <el-switch v-model="billingRules.applyRounding" />
+            </div>
+          </div>
+        </div>
       </div>
       <el-button type="primary" @click="saveSpecialRates" class="save-special">
         <el-icon><Check /></el-icon>
@@ -211,7 +232,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Check, Warning, Plus, Ticket, Delete, Clock, Calendar, Present, Star, Switch } from '@element-plus/icons-vue'
+import { Check, Warning, Plus, Ticket, Delete, Clock, Calendar, Present, Star, Switch, Timer } from '@element-plus/icons-vue'
 import { getTables, updateTable, getSettings, saveSettings, getAreas, getPackages, createPackage, updatePackage, deletePackage as deletePackageApi } from '../api'
 import { t } from '../i18n'
 
@@ -250,6 +271,12 @@ const specialRates = reactive({
   holiday: { multiplier: 2.0, dates: '01-01,05-01,10-01' },
   memberDay: { enabled: false, discount: 10, dates: '05-20,09-09' },
   autoClose: { enabled: false }
+})
+
+const billingRules = reactive({
+  freeMinutes: 5,
+  billingInterval: 30,
+  applyRounding: true
 })
 
 const getTableName = (id) => {
@@ -317,7 +344,7 @@ const saveRate = async (id) => {
 const saveSpecialRates = async () => {
   try {
     const { autoClose, ...rest } = specialRates
-    await saveSettings({ specialRates: rest, autoClose })
+    await saveSettings({ specialRates: rest, autoClose, billingRules: { ...billingRules } })
     ElMessage.success(t('saveSuccess'))
   } catch(e) { ElMessage.error(t('operationFailed')) }
 }
@@ -355,6 +382,11 @@ const loadSettingsData = async () => {
     const res = await getSettings()
     if (res.autoClose) {
       specialRates.autoClose = { ...specialRates.autoClose, ...res.autoClose }
+    }
+    if (res.billingRules) {
+      billingRules.freeMinutes = res.billingRules.freeMinutes ?? 5
+      billingRules.billingInterval = res.billingRules.billingInterval ?? 30
+      billingRules.applyRounding = res.billingRules.applyRounding ?? true
     }
   } catch {}
 }

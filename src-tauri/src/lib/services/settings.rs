@@ -19,9 +19,25 @@ pub struct Settings {
     pub shop_name: Option<String>,
     #[serde(rename = "printFooter", default)]
     pub print_footer: Option<String>,
+    #[serde(rename = "billingRules", default)]
+    pub billing_rules: BillingRules,
 }
 
 fn default_true() -> Option<bool> { Some(true) }
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
+pub struct BillingRules {
+    #[serde(rename = "freeMinutes", default = "default_free_minutes")]
+    pub free_minutes: i32,
+    #[serde(rename = "billingInterval", default = "default_billing_interval")]
+    pub billing_interval: i32,
+    #[serde(rename = "applyRounding", default = "default_true_bool")]
+    pub apply_rounding: bool,
+}
+
+fn default_free_minutes() -> i32 { 5 }
+fn default_billing_interval() -> i32 { 30 }
+fn default_true_bool() -> bool { true }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct AutoClose {
@@ -102,6 +118,7 @@ fn default_settings() -> Settings {
         auto_print_on_close: Some(true),
         shop_name: Some("台球厅".to_string()),
         print_footer: Some("欢迎下次光临".to_string()),
+        billing_rules: BillingRules::default(),
     }
 }
 

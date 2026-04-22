@@ -1,7 +1,7 @@
 use crate::lib::db::DB;
 use crate::lib::models::*;
 use crate::lib::services::settings::load_settings;
-use crate::lib::utils::{calc_bill_minutes, validate_open_table_request, validate_close_table_request, today_local};
+use crate::lib::utils::{calc_bill_minutes_with_params, validate_open_table_request, validate_close_table_request, today_local, BillingParams, calc_extra_minutes};
 use crate::lib::services::settings::get_member_day_discount;
 use crate::lib::services::printer::print_receipt;
 use chrono::{DateTime, Utc};
@@ -205,12 +205,18 @@ pub fn close_order(order_id: i64, req: CloseTableRequest) -> Result<Order, Strin
     
     info!("close_order called: order_id={}, payment_method={:?}", order_id, req.payment_method);
     
+    let settings = load_settings();
     let member_day_discount = get_member_day_discount();
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
     
     let mut conn = DB.lock();
     let tx = conn.transaction().map_err(|e| format!("Transaction failed: {}", e))?;
     
-    let result = close_order_with_conn(&tx, order_id, req, member_day_discount);
+    let result = close_order_with_conn(&tx, order_id, req, member_day_discount, &billing_params);
     
     if result.is_ok() {
         if let Err(e) = tx.commit() {
@@ -233,7 +239,7 @@ pub fn close_order(order_id: i64, req: CloseTableRequest) -> Result<Order, Strin
     result
 }
 
-fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableRequest, member_day_discount: i32) -> Result<Order, String> {
+fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableRequest, member_day_discount: i32, billing_params: &BillingParams) -> Result<Order, String> {
 
     let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>) = conn
         .query_row(
@@ -243,7 +249,6 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
         )
         .map_err(|_| "订单不存在或已结账")?;
 
-    // Fix #13: Use table rate, fallback to area rate, then default 30.0
     let hourly_rate: f64 = conn
         .query_row(
             "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
@@ -257,7 +262,7 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
     let start = DateTime::parse_from_rfc3339(&start_time).map_err(|e| format!("时间解析失败: {}", e))?;
     let now = chrono::Utc::now();
     let duration = (now - start.with_timezone(&Utc)).num_minutes().max(1);
-    let bill_min = calc_bill_minutes(duration);
+    let bill_min = calc_bill_minutes_with_params(duration, &billing_params);
 
     let mut total = 0.0;
     if let (Some(_), Some(price), Some(hours)) = (package_id, package_price, package_hours) {
@@ -265,8 +270,7 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
         let pkg_duration = (hours * 60.0) as i64;
         if duration > pkg_duration {
             let extra_mins = duration - pkg_duration;
-            let extra_bill = calc_bill_minutes(extra_mins);
-            let extra_fee = (extra_bill as f64 / 60.0) * hourly_rate;
+            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
             total += extra_fee;
         }
     }
@@ -415,7 +419,13 @@ pub fn get_orders(status: Option<String>) -> Vec<Order> {
 pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
     if order_id <= 0 { return Err("订单ID无效".to_string()); }
 
+    let settings = load_settings();
     let member_day_discount = get_member_day_discount();
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
     let conn = DB.lock();
 
     let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>) = conn
@@ -426,7 +436,6 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
         )
         .map_err(|_| "订单不存在或状态不允许取消")?;
 
-    // Fix #13: Use table rate, fallback to area rate, then default 30.0
     let hourly_rate: f64 = conn
         .query_row(
             "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
@@ -440,7 +449,7 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
     let start = DateTime::parse_from_rfc3339(&start_time).map_err(|e| format!("时间解析失败: {}", e))?;
     let now = chrono::Utc::now();
     let duration = (now - start.with_timezone(&Utc)).num_minutes().max(1);
-    let bill_min = calc_bill_minutes(duration);
+    let bill_min = calc_bill_minutes_with_params(duration, &billing_params);
 
     let mut total = 0.0;
     if let (Some(_), Some(price), Some(hours)) = (package_id, package_price, package_hours) {
@@ -448,8 +457,7 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
         let pkg_duration = (hours * 60.0) as i64;
         if duration > pkg_duration {
             let extra_mins = duration - pkg_duration;
-            let extra_bill = calc_bill_minutes(extra_mins);
-            let extra_fee = (extra_bill as f64 / 60.0) * hourly_rate;
+            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
             total += extra_fee;
         }
     }
@@ -553,7 +561,13 @@ pub fn check_expired_packages() -> Vec<ExpiredOrderInfo> {
 }
 
 pub fn auto_close_expired(order_ids: Vec<i64>) -> Vec<Result<Order, String>> {
+    let settings = load_settings();
     let member_day_discount = get_member_day_discount();
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
     let mut conn = DB.lock();
     let tx = match conn.transaction() {
         Ok(t) => t,
@@ -562,7 +576,7 @@ pub fn auto_close_expired(order_ids: Vec<i64>) -> Vec<Result<Order, String>> {
     
     let results: Vec<Result<Order, String>> = order_ids.iter().map(|id| {
         let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-        close_order_with_conn(&tx, *id, req, member_day_discount)
+        close_order_with_conn(&tx, *id, req, member_day_discount, &billing_params)
     }).collect();
     
     if results.iter().all(|r| r.is_ok()) {
@@ -612,6 +626,12 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
         return vec![];
     }
 
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
+
     let conn = DB.lock();
     let mut stmt = match conn.prepare(
         "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, o.deposit, o.package_id, o.package_price, o.package_hours, o.start_time
@@ -646,7 +666,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
             )
             .unwrap_or(30.0);
 
-        let bill_min = calc_bill_minutes(duration.max(1));
+        let bill_min = calc_bill_minutes_with_params(duration.max(1), &billing_params);
         let total = (bill_min as f64 / 60.0) * hourly_rate;
 
         let mut available = deposit;
@@ -659,7 +679,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
         if available < total {
             let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-            match close_order_with_conn(&conn, order_id, req, 0) {
+            match close_order_with_conn(&conn, order_id, req, 0, &billing_params) {
                 Ok(_order) => {
                     info!("[AutoClose] Order {} closed: balance/deposit exhausted", order_id);
                     results.push(AutoCloseResult {

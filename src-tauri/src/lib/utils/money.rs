@@ -1,5 +1,22 @@
 use serde::{Serialize, Deserialize};
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BillingParams {
+    pub free_minutes: i32,
+    pub billing_interval: i32,
+    pub apply_rounding: bool,
+}
+
+impl BillingParams {
+    pub fn new(free_minutes: i32, billing_interval: i32, apply_rounding: bool) -> Self {
+        BillingParams { free_minutes, billing_interval, apply_rounding }
+    }
+
+    pub fn default_rules() -> Self {
+        BillingParams { free_minutes: 5, billing_interval: 30, apply_rounding: true }
+    }
+}
+
 /// Money type that stores value in cents (i64) to avoid floating point precision issues.
 /// Serializes/deserializes as f64 (yuan) for API compatibility.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -106,29 +123,40 @@ pub fn calc_bill_amount(duration_minutes: i64, rate_per_hour: f64) -> Money {
     Money::from_yuan(billable_minutes as f64 * rate_per_minute)
 }
 
-/// Calculate bill minutes with rounding rules:
-/// < 5 min: free
-/// 5-29 min: 30 min
-/// 30-59 min: 60 min
-/// >= 60 min: round to nearest 30/60
+/// Calculate billable minutes with configurable rounding rules.
+/// freeMinutes: first N minutes are free.
+/// billingInterval: minimum billing unit (30 means 0-29 min rounds to 30).
+/// applyRounding: if false, charges per actual minute (no rounding).
 pub fn calc_bill_minutes(duration: i64) -> i64 {
-    if duration < 5 {
-        0
-    } else if duration < 30 {
-        30
-    } else if duration < 60 {
-        60
-    } else {
-        let hours = duration / 60;
-        let remaining = duration % 60;
-        if remaining < 5 {
-            hours * 60
-        } else if remaining < 30 {
-            hours * 60 + 30
-        } else {
-            hours * 60 + 60
-        }
+    calc_bill_minutes_with_params(duration, &BillingParams::default_rules())
+}
+
+pub fn calc_bill_minutes_with_params(duration: i64, params: &BillingParams) -> i64 {
+    let duration = duration.max(0);
+    if !params.apply_rounding {
+        return (duration - params.free_minutes as i64).max(0);
     }
+    let free = params.free_minutes.max(0) as i64;
+    let interval = params.billing_interval.max(1) as i64;
+    let grace = (params.billing_interval.max(1) / 6).max(1) as i64;
+    if duration < free {
+        return 0;
+    }
+    let billable = duration - free;
+    if billable <= interval {
+        return free + interval;
+    }
+    let full_units = billable / interval;
+    let rem = billable % interval;
+    let rounded_units = if rem >= grace { full_units + 1 } else { full_units };
+    free + rounded_units * interval
+}
+
+pub fn calc_extra_minutes(extra_mins: i64, hourly_rate: f64) -> f64 {
+    if extra_mins <= 0 {
+        return 0.0;
+    }
+    (extra_mins as f64 / 60.0) * hourly_rate
 }
 
 #[cfg(test)]

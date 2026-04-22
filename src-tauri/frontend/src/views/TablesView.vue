@@ -360,6 +360,7 @@ const openDlg = ref(false)
 const closeDlg = ref(false)
 const sel = ref(null)
 const selMember = ref('')
+const billingRules = ref({ freeMinutes: 5, billingInterval: 30, applyRounding: true, memberDay: { enabled: false, dates: '', discount: 0 } })
 const preview = ref(null)
 const pay = ref({ total: 0, discount: 0, final: 0, deposit: 0, change: 0 })
 const submitting = ref(false)
@@ -550,24 +551,54 @@ const doOpen = (item) => {
   openDlg.value = true
 }
 
+const getMemberDayDiscount = () => {
+  const today = new Date()
+  const mday = billingRules.memberDay
+  if (mday?.enabled && mday.dates) {
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const dd = String(today.getDate()).padStart(2, '0')
+    const todayStr = `${mm}-${dd}`
+    if (mday.dates.split(',').some(d => d.trim() === todayStr)) {
+      return mday.discount || 0
+    }
+  }
+  return 0
+}
+
+const calcBillMinutes = (dur) => {
+  const free = billingRules.freeMinutes || 5
+  const interval = billingRules.billingInterval || 30
+  if (!billingRules.applyRounding) return Math.max(0, dur - free)
+  if (dur < free) return 0
+  const billable = dur - free
+  if (billable <= interval) return free + interval
+  const fullUnits = Math.floor(billable / interval)
+  const rem = billable % interval
+  const grace = Math.max(1, Math.floor(interval / 6))
+  return free + (rem >= grace ? fullUnits + 1 : fullUnits) * interval
+}
+
 const doClose = async (item) => {
   try {
     preview.value = await getOrderByTable(item.id)
     sel.value = item
     const dur = Math.max(Math.floor((Date.now() - new Date(preview.value.start_time.replace(' ', 'T'))) / 60000), 1)
-    let billMin = 0
-    if (dur < 5) billMin = 0
-    else if (dur < 30) billMin = 30
-    else if (dur < 60) billMin = 60
-    else {
-      const hours = Math.floor(dur / 60)
-      const remaining = dur % 60
-      if (remaining < 5) billMin = hours * 60
-      else if (remaining < 30) billMin = hours * 60 + 30
-      else billMin = hours * 60 + 60
-    }
     const rate = item.rate_per_hour || 30
-    const total = rnd((billMin / 60) * rate, 2)
+    let total = 0
+
+    if (preview.value.package_id && preview.value.package_price) {
+      total = preview.value.package_price
+      const pkgDur = Math.floor((preview.value.package_hours || 0) * 60)
+      if (dur > pkgDur) {
+        const extra = dur - pkgDur
+        total += (extra / 60) * rate
+      }
+    } else {
+      const billMin = calcBillMinutes(dur)
+      total = (billMin / 60) * rate
+    }
+    total = rnd(total, 2)
+
     let disc = 0
     let fin = total
     const deposit = preview.value.deposit || 0
@@ -576,14 +607,18 @@ const doClose = async (item) => {
     if (preview.value.member_id) {
       const m = members.value.find(x => x.id === preview.value.member_id)
       if (m) {
-        disc = rnd(total * (1 - m.discount), 2)
+        const mdd = getMemberDayDiscount()
+        const memberDisc = m.discount || 1
+        const mdayDisc = 1 - (mdd / 100)
+        const finalFactor = memberDisc * mdayDisc
+        disc = rnd(total * (1 - finalFactor), 2)
         fin = rnd(total - disc, 2)
       }
     }
 
     if (deposit > 0) {
       fin = Math.max(0, fin - deposit)
-      change = deposit - (total - disc)
+      change = deposit > fin ? deposit - fin : 0
     }
 
     pay.value = { total, discount: disc, final: fin, deposit, change: Math.max(0, change) }
@@ -660,8 +695,15 @@ const loadAreas = async () => {
 
 let timer = null
 
+const loadBillingRules = async () => {
+  try {
+    const s = await getSettings()
+    if (s.billingRules) billingRules.value = s.billingRules
+  } catch {}
+}
+
 onMounted(async () => {
-  await Promise.all([loadTables(), loadAreas()])
+  await Promise.all([loadTables(), loadAreas(), loadBillingRules()])
   members.value = await getMembers()
   timer = setInterval(loadTables, 30000)
 })
