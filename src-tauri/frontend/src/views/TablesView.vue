@@ -75,7 +75,7 @@
     <el-dialog
       v-model="openDlg"
       :title="openDlgTitle"
-      width="720px"
+      width="580px"
       :close-on-click-modal="false"
       class="open-table-dialog"
     >
@@ -286,7 +286,7 @@
     </el-dialog>
 
     <!-- {{ t('CheckoutDialog') }} -->
-    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="360px" :close-on-click-modal="false">
+    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">
           <div class="checkout-table"><el-icon><Grid /></el-icon><span>{{ sel?.name }}</span></div>
@@ -315,7 +315,12 @@
         <div class="close-payment-section">
           <div class="payment-label">{{ t('paymentMethod') }}</div>
           <div class="payment-btns">
-            <el-button v-for="pm in paymentMethods" :key="pm.value" :type="closePaymentMethod === pm.value ? 'primary' : 'default'" @click="closePaymentMethod = pm.value" size="small">
+            <el-button
+              v-for="pm in paymentMethods"
+              :key="pm.value"
+              :type="closePaymentMethod === pm.value ? 'primary' : 'default'"
+              @click="closePaymentMethod = pm.value"
+            >
               <el-icon><component :is="pm.icon" /></el-icon>
               {{ pm.label }}
             </el-button>
@@ -324,6 +329,10 @@
       </div>
       <template #footer>
         <div class="payment-btns">
+          <el-button type="warning" @click="openCancelDlg" v-if="preview">
+            <el-icon><CircleClose /></el-icon>
+            {{ t('cancelOrder') }}
+          </el-button>
           <el-button @click="closeDlg=false">{{ t('cancel') }}</el-button>
           <el-button type="danger" @click="cfmClose">
             <el-icon><Money /></el-icon>
@@ -338,7 +347,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElAutocomplete, ElAvatar, ElInputNumber, ElSwitch, ElInput } from 'element-plus'
-import { Refresh, Money, User, Timer, VideoPlay, Coin, House, Grid, Check, UserFilled, Avatar, Search, Close, Phone, Grid as GridIcon, Clock, Ticket } from '@element-plus/icons-vue'
+import { Refresh, Money, User, Timer, VideoPlay, Coin, House, Grid, Check, UserFilled, Avatar, Search, Close, Phone, Grid as GridIcon, Clock, Ticket, CircleClose } from '@element-plus/icons-vue'
 import { getTables, getMembers, getAreas, getOrderByTable, openTable, closeTable, getSettings } from '../api'
 import { t, currentLang } from '../i18n'
 
@@ -367,6 +376,10 @@ const paymentMethods = [
   { value: 'wechat', label: t('wechat'), icon: VideoPlay },
   { value: 'alipay', label: t('alipay'), icon: Coin },
 ]
+
+const openCancelDlg = () => {
+  ElMessage.info(t('featureNotAvailable'))
+}
 
 const openDlgTitle = computed(() => {
   currentLang.value
@@ -928,4 +941,26 @@ onUnmounted(() => clearInterval(timer))
 .total-value { font-size: 24px; font-weight: 700; color: var(--accent-danger); }
 .deposit-value { color: var(--accent-success); }
 .change-value { color: var(--accent-warning); }
+
+.close-payment-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-default); }
+.close-payment-section .payment-label { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); }
+.close-payment-section .payment-btns { display: flex; gap: 10px; }
+.close-payment-section .payment-btns .el-button { flex: 1; }
+.close-payment-section .payment-btns .el-button--default {
+  background: var(--bg-tertiary) !important;
+  border: 2px solid var(--border-default) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 600;
+}
+.close-payment-section .payment-btns .el-button--default:hover {
+  border-color: var(--accent-primary) !important;
+  color: var(--accent-primary) !important;
+  background: var(--bg-active) !important;
+}
+.close-payment-section .payment-btns .el-button--primary {
+  border: 2px solid var(--accent-primary) !important;
+}
+
+.payment-btns { display: flex; gap: 12px; justify-content: flex-end; }
+.payment-btns .el-button { flex: 1; }
 </style>
