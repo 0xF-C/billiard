@@ -90,7 +90,7 @@
                 :class="['lang-btn', { active: curLang === l.v }]"
                 @click="setLang(l.v)"
               >
-                {{ t(l.k) }}
+                {{ l.v.toUpperCase() }}
               </button>
             </div>
             <div class="user-badge">
