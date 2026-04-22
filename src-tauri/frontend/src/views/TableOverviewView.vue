@@ -330,7 +330,7 @@
           <el-button @click="closeDlg=false">{{ t('cancel') }}</el-button>
           <el-button type="danger" @click="cfmClose">
             <el-icon><Money /></el-icon>
-            {{ t('confirmClose') }} ¥{{ pay.final.toFixed(2) }}
+            {{ t('confirmClose') }}
           </el-button>
         </div>
       </template>
