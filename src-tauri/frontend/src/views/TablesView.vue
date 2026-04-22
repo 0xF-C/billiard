@@ -346,10 +346,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ElMessage, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElAutocomplete, ElAvatar, ElInputNumber, ElSwitch, ElInput } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElAutocomplete, ElAvatar, ElInputNumber, ElSwitch, ElInput } from 'element-plus'
 import { Refresh, Money, User, Timer, VideoPlay, Coin, House, Grid, Check, UserFilled, Avatar, Search, Close, Phone, Grid as GridIcon, Clock, Ticket, CircleClose } from '@element-plus/icons-vue'
 import { getTables, getMembers, getAreas, getOrderByTable, openTable, closeTable, getSettings } from '../api'
 import { t, currentLang } from '../i18n'
+
+const router = useRouter()
 
 const tables = ref([])
 const areas = ref([])
@@ -636,6 +639,25 @@ const cfmOpen = async () => {
       memberId = selectedMember.value.id
     } else if (customerType.value === 'walkin' && walkinForm.value.useDeposit) {
       deposit = walkinForm.value.deposit
+    }
+
+    const isMemberNoBalance = customerType.value === 'member' && selectedMember.value && (selectedMember.value.balance || 0) <= 0
+    if (isMemberNoBalance) {
+      openDlg.value = false
+      const confirmed = await ElMessageBox.confirm(
+        t('noBalanceRechargeMsg'),
+        t('noBalanceRechargeTitle'),
+        {
+          confirmButtonText: t('goRecharge'),
+          cancelButtonText: t('waitLater'),
+          type: 'warning',
+          distinguishCancelAndClose: true,
+        }
+      ).catch(() => false)
+      if (confirmed) {
+        router.push({ path: '/members', query: { rechargeId: String(selectedMember.value.id) } })
+      }
+      return
     }
 
     await openTable({

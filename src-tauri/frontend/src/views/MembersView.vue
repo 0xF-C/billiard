@@ -310,6 +310,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 import { ElMessage, ElMessageBox, ElButton, ElInput, ElDialog, ElForm, ElFormItem, ElAvatar, ElTag, ElCard, ElInputNumber, ElSlider, ElSelect, ElOption, ElDatePicker, ElIcon, ElTable, ElTableColumn } from 'element-plus'
 import { Search, Plus, User, Wallet, Edit, Delete, Calendar, Location, UserFilled, Check, Money, Document } from '@element-plus/icons-vue'
 import { getMembers, createMember, updateMember, deleteMember, rechargeMember, getMemberBalanceLogs } from '../api'
@@ -504,7 +507,19 @@ const cfmRech = async () => {
   } catch(e) { ElMessage.error(e.response?.data?.error || t('operationFailed')) }
 }
 
-onMounted(search)
+onMounted(async () => {
+  await search()
+  const rid = route.query.rechargeId
+  if (rid) {
+    const id = Number(rid)
+    const m = members.value.find(x => x.id === id)
+    if (m) {
+      rechTarget.value = m
+      rechAmt.value = 100
+      rechDlg.value = true
+    }
+  }
+})
 </script>
 
 <style scoped>
