@@ -75,7 +75,7 @@
     <el-dialog
       v-model="openDlg"
       :title="openDlgTitle"
-      width="580px"
+      width="720px"
       :close-on-click-modal="false"
       class="open-table-dialog"
     >
@@ -200,7 +200,7 @@
               <div v-if="walkinForm.useDeposit" class="deposit-options">
                 <div class="quick-amounts">
                   <el-button
-                    v-for="amt in [50, 100, 200, 500]"
+                    v-for="amt in [50, 100, 200]"
                     :key="amt"
                     :class="['amount-btn', { active: walkinForm.deposit === amt }]"
                     @click="walkinForm.deposit = amt"
@@ -375,6 +375,7 @@ const paymentMethods = [
   { value: 'cash', label: t('cash'), icon: Money },
   { value: 'wechat', label: t('wechat'), icon: VideoPlay },
   { value: 'alipay', label: t('alipay'), icon: Coin },
+  { value: 'deposit', label: t('deposit'), icon: Ticket },
 ]
 
 const openCancelDlg = () => {
