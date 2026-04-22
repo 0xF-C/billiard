@@ -286,57 +286,44 @@
     </el-dialog>
 
     <!-- {{ t('CheckoutDialog') }} -->
-    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="420px" :close-on-click-modal="false">
+    <el-dialog v-model="closeDlg" :title="t('closeTable')" width="360px" :close-on-click-modal="false">
       <div class="checkout-content" v-if="preview">
         <div class="checkout-header">
-          <div class="checkout-table">
-            <el-icon><Grid /></el-icon>
-            <span>{{ sel?.name }}</span>
-          </div>
+          <div class="checkout-table"><el-icon><Grid /></el-icon><span>{{ sel?.name }}</span></div>
         </div>
-
         <div class="checkout-details">
-          <div class="detail-row">
-            <span class="detail-label">{{ t('memberName') }}</span>
-            <span class="detail-value">{{ preview.member_name || walkinName || t('walkIn') }}</span>
+          <div class="detail-row"><span class="detail-label">{{ t('memberName') }}</span><span class="detail-value">{{ preview.member_name || walkinName || t('walkIn') }}</span></div>
+          <div class="detail-row"><span class="detail-label">{{ t('startTime') }}</span><span class="detail-value">{{ formatDateTime(preview.start_time) }}</span></div>
+          <div class="detail-row highlight"><span class="detail-label">{{ t('consumptionDuration') }}</span><span class="detail-value time">{{ getDur(preview.start_time) }}</span></div>
+          <div class="detail-row" v-if="preview.package_name">
+            <span class="detail-label">{{ t('packageName') }}</span>
+            <span class="detail-value" style="color: var(--accent-primary);">{{ preview.package_name }}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">{{ t('startTime') }}</span>
-            <span class="detail-value">{{ formatDateTime(preview.start_time) }}</span>
-          </div>
-          <div class="detail-row highlight">
-            <span class="detail-label">{{ t('consumptionDuration') }}</span>
-            <span class="detail-value time">{{ getDur(preview.start_time) }}</span>
+          <div class="detail-row" v-if="preview.package_price">
+            <span class="detail-label">{{ t('packagePrice') }}</span>
+            <span class="detail-value">¥{{ preview.package_price }}</span>
           </div>
         </div>
-
         <el-divider />
-
         <div class="amount-section">
-          <div class="amount-row">
-            <span>{{ t('tableRate') }}</span>
-            <span>¥{{ pay.total.toFixed(2) }}</span>
-          </div>
-          <div v-if="pay.deposit > 0" class="amount-row deposit">
-            <span>{{ t('depositPaid') }}</span>
-            <span class="deposit-value">-¥{{ pay.deposit.toFixed(2) }}</span>
-          </div>
-          <div v-if="pay.discount > 0" class="amount-row discount">
-            <span>{{ t('memberDiscount') }}</span>
-            <span class="discount-value">-¥{{ pay.discount.toFixed(2) }}</span>
-          </div>
-          <div class="amount-row total">
-            <span>{{ t('actualPayment') }}</span>
-            <span class="total-value">¥{{ pay.final.toFixed(2) }}</span>
-          </div>
-          <div v-if="pay.change > 0" class="amount-row change">
-            <span>{{ t('change') }}</span>
-            <span class="change-value">¥{{ pay.change.toFixed(2) }}</span>
+          <div class="amount-row"><span>{{ t('tableRate') }}</span><span>¥{{ pay.total.toFixed(2) }}</span></div>
+          <div v-if="pay.deposit > 0" class="amount-row deposit"><span>{{ t('depositPaid') }}</span><span class="deposit-value">-¥{{ pay.deposit.toFixed(2) }}</span></div>
+          <div v-if="pay.discount > 0" class="amount-row discount"><span>{{ t('memberDiscount') }}</span><span class="discount-value">-¥{{ pay.discount.toFixed(2) }}</span></div>
+          <div class="amount-row total"><span>{{ t('actualPayment') }}</span><span class="total-value">¥{{ pay.final.toFixed(2) }}</span></div>
+          <div v-if="pay.change > 0" class="amount-row change"><span>{{ t('change') }}</span><span class="change-value">¥{{ pay.change.toFixed(2) }}</span></div>
+        </div>
+        <div class="close-payment-section">
+          <div class="payment-label">{{ t('paymentMethod') }}</div>
+          <div class="payment-btns">
+            <el-button v-for="pm in paymentMethods" :key="pm.value" :type="closePaymentMethod === pm.value ? 'primary' : 'default'" @click="closePaymentMethod = pm.value" size="small">
+              <el-icon><component :is="pm.icon" /></el-icon>
+              {{ pm.label }}
+            </el-button>
           </div>
         </div>
       </div>
       <template #footer>
-        <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <div class="payment-btns">
           <el-button @click="closeDlg=false">{{ t('cancel') }}</el-button>
           <el-button type="danger" @click="cfmClose">
             <el-icon><Money /></el-icon>
@@ -374,6 +361,12 @@ const selectedMember = ref(null)
 const selectedPackage = ref(null)
 const walkinForm = ref({ name: '', phone: '', useDeposit: false, deposit: 100, payment_method: 'cash' })
 const closeForm = ref({ payment_method: 'cash' })
+const closePaymentMethod = ref('cash')
+const paymentMethods = [
+  { value: 'cash', label: t('cash'), icon: Money },
+  { value: 'wechat', label: t('wechat'), icon: VideoPlay },
+  { value: 'alipay', label: t('alipay'), icon: Coin },
+]
 
 const openDlgTitle = computed(() => {
   currentLang.value
@@ -624,10 +617,11 @@ const cfmOpen = async () => {
 
 const cfmClose = async () => {
   try {
-    await closeTable(preview.value.id, { payment_method: closeForm.value.payment_method })
+    await closeTable(preview.value.id, { payment_method: closePaymentMethod.value })
     ElMessage.success({ message: `${t('closeSuccess')}！¥${pay.value.final.toFixed(2)}`, grouping: true })
     closeDlg.value = false
     closeForm.value = { payment_method: 'cash' }
+    closePaymentMethod.value = 'cash'
     await loadTables()
   } catch(e) { ElMessage.error(e.response?.data?.error || t('operationFailed')) }
 }
