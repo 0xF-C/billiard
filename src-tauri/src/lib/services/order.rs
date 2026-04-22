@@ -94,6 +94,16 @@ pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
             return Err(format!("球桌当前状态: {}，无法开台", status));
         }
 
+        if let (Some(member_id), Some(price)) = (req.member_id, package_price) {
+            let balance: f64 = tx
+                .query_row("SELECT balance FROM members WHERE id = ?1", params![member_id], |r| r.get(0))
+                .unwrap_or(0.0);
+            if balance < price {
+                tx.rollback().ok();
+                return Err(format!("套餐价格 ¥{:.2}，会员余额不足", price));
+            }
+        }
+
         let now = chrono::Utc::now().to_rfc3339();
 
         if let Err(e) = tx.execute(

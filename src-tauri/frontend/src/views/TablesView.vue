@@ -365,6 +365,7 @@ const closeDlg = ref(false)
 const sel = ref(null)
 const selMember = ref('')
 const billingRules = ref({ freeMinutes: 5, billingInterval: 30, applyRounding: true, memberDay: { enabled: false, dates: '', discount: 0 } })
+const specialRates = ref({ weekend: { enabled: false, days: [], discount: 10 }, memberDay: { enabled: false, dates: '', discount: 0 } })
 const preview = ref(null)
 const pay = ref({ total: 0, discount: 0, final: 0, deposit: 0, change: 0 })
 const submitting = ref(false)
@@ -557,11 +558,20 @@ const doOpen = (item) => {
 
 const getMemberDayDiscount = () => {
   const today = new Date()
+  const dow = today.getDay()
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  const todayStr = `${mm}-${dd}`
+
+  if (specialRates.weekend?.enabled && specialRates.weekend.days?.length) {
+    const monBased = dow === 0 ? 7 : dow
+    if (specialRates.weekend.days.some(d => d === monBased)) {
+      return (specialRates.weekend.discount || 10)
+    }
+  }
+
   const mday = billingRules.memberDay
   if (mday?.enabled && mday.dates) {
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const dd = String(today.getDate()).padStart(2, '0')
-    const todayStr = `${mm}-${dd}`
     if (mday.dates.split(',').some(d => d.trim() === todayStr)) {
       return mday.discount || 0
     }
@@ -629,8 +639,9 @@ const doClose = async (item) => {
     }
 
     if (deposit > 0) {
+      const originalCash = fin
       fin = Math.max(0, fin - deposit)
-      change = deposit > fin ? deposit - fin : 0
+      change = deposit > originalCash ? deposit - originalCash : 0
     }
 
     pay.value = { total, discount: disc, final: fin, deposit, change: Math.max(0, change), balancePaid, memberBalance }
@@ -651,7 +662,10 @@ const cfmOpen = async () => {
     }
 
     const isMemberNoBalance = customerType.value === 'member' && selectedMember.value && (selectedMember.value.balance || 0) <= 0
-    if (isMemberNoBalance) {
+    const packageBalanceNeeded = selectedPackage.value ? (selectedPackage.value.price || 0) : 0
+    const memberBalance = selectedMember.value ? (selectedMember.value.balance || 0) : 0
+    const needsRecharge = (isMemberNoBalance) || (packageBalanceNeeded > 0 && memberBalance < packageBalanceNeeded)
+    if (needsRecharge) {
       openDlg.value = false
       const confirmed = await ElMessageBox.confirm(
         t('noBalanceRechargeMsg'),
@@ -730,7 +744,27 @@ let timer = null
 const loadBillingRules = async () => {
   try {
     const s = await getSettings()
-    if (s.billingRules) billingRules.value = s.billingRules
+    if (s.billingRules) {
+      billingRules.value.freeMinutes = s.billingRules.freeMinutes ?? 5
+      billingRules.value.billingInterval = s.billingRules.billingInterval ?? 30
+      billingRules.value.applyRounding = s.billingRules.applyRounding ?? true
+    }
+    if (s.memberDay) {
+      billingRules.value.memberDay = {
+        enabled: s.memberDay.enabled ?? false,
+        dates: s.memberDay.dates ?? '',
+        discount: s.memberDay.discount ?? 0,
+      }
+    }
+    if (s.specialRates?.weekendDiscount) {
+      const wd = s.specialRates.weekendDiscount
+      const days = wd.days ? String(wd.days).split(',').map(Number) : []
+      specialRates.value.weekend = {
+        enabled: wd.enabled ?? false,
+        discount: wd.discount ?? 10,
+        days: days,
+      }
+    }
   } catch {}
 }
 
