@@ -75,7 +75,7 @@
     <el-dialog
       v-model="openDlg"
       :title="openDlgTitle"
-      width="720px"
+      width="520px"
       :close-on-click-modal="false"
       class="open-table-dialog"
     >
