@@ -234,6 +234,21 @@
         <div v-if="rechAmt > 0" class="recharge-tip">
           {{ t('rechargeAfterBalance') }}：<span class="new-balance">¥{{ ((rechTarget.balance || 0) + rechAmt).toFixed(2) }}</span>
         </div>
+
+        <div class="recharge-payment">
+          <span class="payment-label">{{ t('paymentMethod') }}</span>
+          <div class="payment-btns">
+            <el-button
+              v-for="pm in rechargePaymentMethods"
+              :key="pm.value"
+              :type="rechPaymentMethod === pm.value ? 'success' : 'default'"
+              @click="rechPaymentMethod = pm.value"
+            >
+              <el-icon><component :is="pm.icon" /></el-icon>
+              {{ pm.label }}
+            </el-button>
+          </div>
+        </div>
       </div>
       <template #footer>
         <el-button @click="rechDlg=false">{{ t('cancel') }}</el-button>
@@ -314,7 +329,7 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 import { ElMessage, ElMessageBox, ElButton, ElInput, ElDialog, ElForm, ElFormItem, ElAvatar, ElTag, ElCard, ElInputNumber, ElSlider, ElSelect, ElOption, ElDatePicker, ElIcon, ElTable, ElTableColumn } from 'element-plus'
-import { Search, Plus, User, Wallet, Edit, Delete, Calendar, Location, UserFilled, Check, Money, Document } from '@element-plus/icons-vue'
+import { Search, Plus, User, Wallet, Edit, Delete, Calendar, Location, UserFilled, Check, Money, Document, Coin, VideoPlay } from '@element-plus/icons-vue'
 import { getMembers, createMember, updateMember, deleteMember, rechargeMember, getMemberBalanceLogs } from '../api'
 import { t } from '../i18n'
 
@@ -326,6 +341,12 @@ const rechDlg = ref(false)
 const editTarget = ref(null)
 const rechTarget = ref(null)
 const rechAmt = ref(100)
+const rechPaymentMethod = ref('cash')
+const rechargePaymentMethods = [
+  { value: 'cash', label: t('cash'), icon: Money },
+  { value: 'wechat', label: t('wechat'), icon: VideoPlay },
+  { value: 'alipay', label: t('alipay'), icon: Coin },
+]
 
 const historyDlg = ref(false)
 const historyMember = ref(null)
@@ -500,7 +521,7 @@ const doRecharge = (m) => { rechTarget.value = m; rechAmt.value = 100; rechDlg.v
 
 const cfmRech = async () => {
   try {
-    await rechargeMember(rechTarget.value.id, rechAmt.value, '余额')
+    await rechargeMember(rechTarget.value.id, rechAmt.value, rechPaymentMethod.value)
     ElMessage.success(`${t('rechargeSuccess')} ¥${rechAmt.value}`)
     rechDlg.value = false
     await search()

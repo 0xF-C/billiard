@@ -192,7 +192,7 @@
               </div>
             </div>
 
-            <div class="deposit-section">
+<div class="deposit-section">
               <div class="deposit-header">
                 <span class="deposit-title">{{ t('deposit') }}</span>
                 <el-switch v-model="walkinForm.useDeposit" :active-text="t('confirm')" :inactive-text="t('cancel')" />
@@ -216,6 +216,20 @@
                     controls-position="right"
                     :placeholder="t('amount')"
                   />
+                </div>
+                <div class="deposit-payment">
+                  <span class="payment-label">{{ t('paymentMethod') }}</span>
+                  <div class="payment-btns">
+                    <el-button
+                      v-for="pm in depositPaymentMethods"
+                      :key="pm.value"
+                      :type="walkinForm.payment_method === pm.value ? 'primary' : 'default'"
+                      @click="walkinForm.payment_method = pm.value"
+                    >
+                      <el-icon><component :is="pm.icon" /></el-icon>
+                      {{ pm.label }}
+                    </el-button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -375,6 +389,11 @@ const memberSearch = ref('')
 const selectedMember = ref(null)
 const selectedPackage = ref(null)
 const walkinForm = ref({ name: '', phone: '', useDeposit: false, deposit: 100, payment_method: 'cash' })
+const depositPaymentMethods = [
+  { value: 'cash', label: t('cash'), icon: Money },
+  { value: 'wechat', label: t('wechat'), icon: VideoPlay },
+  { value: 'alipay', label: t('alipay'), icon: Coin },
+]
 const closeForm = ref({ payment_method: 'cash' })
 const closePaymentMethod = ref('cash')
 const paymentMethods = [
@@ -964,6 +983,10 @@ onUnmounted(() => clearInterval(timer))
   color: var(--accent-success);
 }
 .custom-deposit { display: flex; align-items: center; gap: 8px; }
+.deposit-payment { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.deposit-payment .payment-label { font-size: 12px; color: var(--text-secondary); }
+.deposit-payment .payment-btns { display: flex; gap: 8px; }
+.deposit-payment .payment-btns .el-button { flex: 1; }
 
 .package-section { display: flex; flex-direction: column; gap: 8px; }
 .package-options { display: flex; flex-wrap: wrap; gap: 8px; }
