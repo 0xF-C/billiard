@@ -438,6 +438,7 @@ const translations = {
     actualPayment: 'ئەمەلىي تۆلەش',
     consumptionDuration: 'سەرپىيات ۋاقتى',
     autoCloseExhausted: 'قالدۇق يوقاپ ئاپتوماتىك تاقاش',
+    autoCloseInterval: 'تەكشۈرۈش ئارىلىقى',
     autoCloseExhaustedDesc: 'ئەزا قالدۇقى ياكى ئامانەت پۇل تۈگىگەندە ئاپتوماتىك تاقاش',
     firstLoginSetup: 'تۇنجى قېتىم كىرىش تەڭشىكى',
     newUsername: 'ئىشلەتكۈچى نامى',

@@ -129,6 +129,10 @@
               <label>{{ t('autoCloseExhaustedDesc') }}</label>
               <el-switch v-model="specialRates.autoClose.enabled" />
             </div>
+            <div class="rate-item">
+              <label>{{ t('autoCloseInterval') }} ({{ t('minutes') }})</label>
+              <el-input-number v-model="specialRates.autoClose.intervalMinutes" :min="1" :max="60" :step="1" :disabled="!specialRates.autoClose.enabled" />
+            </div>
           </div>
         </div>
 

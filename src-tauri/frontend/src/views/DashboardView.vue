@@ -485,6 +485,7 @@ const areas = ref([])
 const members = ref([])
 const packages = ref([])
 const shopName = ref('')
+const autoCloseInterval = ref(10)
 let timer = null
 let realtimeTimer = null
 
@@ -1103,6 +1104,9 @@ const load = async () => {
     members.value = await getMembers()
     const settings = await getSettings()
     packages.value = settings.packages || []
+    if (settings.autoClose?.intervalMinutes) {
+      autoCloseInterval.value = settings.autoClose.intervalMinutes
+    }
     
     await loadProducts()
     
@@ -1154,7 +1158,7 @@ onMounted(() => {
     realtimeTimer = setInterval(async () => {
       try { await realtimeCheck(30) } catch {}
       try { const closed = await autoCloseExhausted(); if (closed && closed.length > 0) { ElMessage.warning(`余额不足自动关台: ${closed.length} 桌`); load(); } } catch {}
-    }, 10 * 60 * 1000)
+    }, autoCloseInterval.value * 60 * 1000)
   })
 onUnmounted(() => { clearInterval(timer); clearInterval(realtimeTimer) })
 </script>

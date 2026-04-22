@@ -42,13 +42,17 @@ fn default_true_bool() -> bool { true }
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct AutoClose {
     pub enabled: bool,
+    #[serde(rename = "intervalMinutes", default = "default_close_interval")]
+    pub interval_minutes: i32,
 }
 
 impl Default for AutoClose {
     fn default() -> Self {
-        AutoClose { enabled: false }
+        AutoClose { enabled: false, interval_minutes: 10 }
     }
 }
+
+fn default_close_interval() -> i32 { 10 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
 pub struct BusinessHours {
