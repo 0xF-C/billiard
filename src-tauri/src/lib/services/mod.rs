@@ -18,6 +18,7 @@ mod hardware;
 mod backup;
 mod printer;
 mod printer_bitmap;
+mod payment;
 
 pub use auth::*;
 pub use table::*;
@@ -38,3 +39,4 @@ pub use user::*;
 pub use hardware::*;
 pub use backup::*;
 pub use printer::*;
+pub use payment::*;

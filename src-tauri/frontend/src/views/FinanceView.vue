@@ -202,6 +202,13 @@
             <span v-else class="no-data">-</span>
           </template>
         </el-table-column>
+        <el-table-column :label="t('paymentMethod')" prop="payment_method" min-width="100">
+          <template #default="{ row }">
+            <el-tag :type="getPaymentMethodType(row.payment_method)" size="small">
+              {{ getPaymentMethodText(row.payment_method) }}
+            </el-tag>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
 
@@ -323,6 +330,22 @@ const getDurFromMins = (mins) => {
   const hours = Math.floor(mins / 60)
   const m = mins % 60
   return hours > 0 ? `${hours}${t('hour')} ${m}${t('minute')}` : `${m}${t('minute')}`
+}
+
+const getPaymentMethodType = (method) => {
+  if (!method) return 'info'
+  if (method === 'cash') return 'success'
+  if (method === 'wechat') return 'primary'
+  if (method === 'alipay') return 'warning'
+  return 'info'
+}
+
+const getPaymentMethodText = (method) => {
+  if (!method) return '-'
+  if (method === 'cash') return t('cash')
+  if (method === 'wechat') return t('wechat')
+  if (method === 'alipay') return t('alipay')
+  return method
 }
 
 // 计算实时预估金额

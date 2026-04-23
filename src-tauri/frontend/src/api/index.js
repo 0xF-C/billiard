@@ -323,6 +323,31 @@ export const testPrinter = (id) =>
 export const listUsbPrinters = () =>
   invoke("cmd_list_usb_printers").catch((err) => handleError(err, "枚举USB打印机"));
 
+// ======== 支付接口(预留) ========
+export const createPaymentQr = (method, amount, description) =>
+  invoke("cmd_create_payment_qr", { token: authToken, method, amount, description })
+    .catch((err) => handleError(err, "创建支付二维码"));
+
+export const queryPaymentStatus = (method, orderNo) =>
+  invoke("cmd_query_payment_status", { token: authToken, method, orderNo })
+    .catch((err) => handleError(err, "查询支付状态"));
+
+export const createRefund = (method, orderId, amount, reason) =>
+  invoke("cmd_create_refund", { token: authToken, method, orderId, amount, reason })
+    .catch((err) => handleError(err, "申请退款"));
+
+export const generateTableQr = (tableId) =>
+  invoke("cmd_generate_table_qr", { token: authToken, tableId })
+    .catch((err) => handleError(err, "生成桌台二维码"));
+
+export const generateRechargeQr = (memberId) =>
+  invoke("cmd_generate_recharge_qr", { token: authToken, memberId })
+    .catch((err) => handleError(err, "生成充值二维码"));
+
+export const sendTemplateMessage = (openid, templateId, data) =>
+  invoke("cmd_send_template_message", { token: authToken, openid, templateId, data })
+    .catch((err) => handleError(err, "发送模板消息"));
+
 // ======== 默认导出 ========
 export default {
   login,
@@ -414,4 +439,10 @@ export default {
   printReceipt,
   testPrinter,
   listUsbPrinters,
+  createPaymentQr,
+  queryPaymentStatus,
+  createRefund,
+  generateTableQr,
+  generateRechargeQr,
+  sendTemplateMessage,
 };

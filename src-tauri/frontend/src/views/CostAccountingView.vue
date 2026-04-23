@@ -214,7 +214,14 @@ const formatDate = (d) => {
 }
 
 const loadData = async () => {
-  await getExpenses().catch(() => null)
+  try {
+    const data = await getExpenses()
+    if (data && Array.isArray(data)) {
+      expenses.value = data
+    }
+  } catch (e) {
+    console.error('Failed to load expenses:', e)
+  }
 }
 
 const submitExpense = async () => {
@@ -222,15 +229,20 @@ const submitExpense = async () => {
     ElMessage.warning(t('pleaseComplete'))
     return
   }
-  expenses.value.unshift({
-    id: Date.now(),
-    date: expenseForm.value.date,
-    category: expenseForm.value.category,
-    amount: expenseForm.value.amount,
-    remark: expenseForm.value.remark,
-    operator: '当前用户',
-  })
-  ElMessage.success(t('addSuccess'))
+  try {
+    const result = await createExpense({
+      date: expenseForm.value.date,
+      category: expenseForm.value.category,
+      amount: expenseForm.value.amount,
+      remark: expenseForm.value.remark,
+    })
+    if (result) {
+      expenses.value.unshift(result)
+      ElMessage.success(t('addSuccess'))
+    }
+  } catch (e) {
+    ElMessage.error(e.message || t('operationFailed'))
+  }
   showAddExpense.value = false
   expenseForm.value = { date: new Date().toISOString().split('T')[0], category: '', amount: 0, remark: '' }
 }
