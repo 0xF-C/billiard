@@ -67,6 +67,25 @@ pub fn sale_product(req: SaleRequest) -> Result<Sale, String> {
     let now = chrono::Utc::now().to_rfc3339();
     let table_name: Option<String> = if let Some(tid) = req.table_id { conn.query_row("SELECT name FROM tables WHERE id = ?1", params![tid], |r| r.get(0)).ok() } else { None };
     let member_name: Option<String> = if let Some(mid) = req.member_id { conn.query_row("SELECT name FROM members WHERE id = ?1", params![mid], |r| r.get(0)).ok() } else { None };
+    
+    // 如果使用会员支付，扣减会员余额
+    if pm == "member" && req.member_id.is_some() {
+        let mid = req.member_id.unwrap();
+        let balance: f64 = conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0)).unwrap_or(0.0);
+        if balance < total {
+            return Err("会员余额不足".to_string());
+        }
+        conn.execute(
+            "UPDATE members SET balance = balance - ?1, total_spent = total_spent + ?1 WHERE id = ?2",
+            params![total, mid],
+        ).map_err(|e| format!("扣减余额失败: {}", e))?;
+        conn.execute(
+            "INSERT INTO balance_logs (member_id, amount, balance_before, balance_after, reason, payment_method) 
+             SELECT ?1, -?2, balance, balance - ?2, 'product_sale', ?3 FROM members WHERE id = ?1",
+            params![mid, total, &pm],
+        ).ok();
+    }
+    
     conn.execute("INSERT INTO sales (inventory_id, product_name, quantity, unit_price, total_amount, table_id, member_id, payment_method, remark, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", params![req.product_id, &name, req.quantity, unit_price, total, req.table_id, req.member_id, &pm, req.remark, now]).map_err(|e| e.to_string())?;
     let id = conn.last_insert_rowid();
     Ok(Sale { id, product_name: name, quantity: req.quantity, unit_price, total_amount: total, table_id: req.table_id, table_name, member_id: req.member_id, member_name, payment_method: pm, remark: req.remark, created_at: now })
@@ -111,6 +130,26 @@ pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
     }
 
     // Phase 2: Deduct stock (all or nothing - if any fails, rollback)
+    
+    // 如果使用会员支付，扣减会员余额
+    if pm == "member" && req.member_id.is_some() {
+        let mid = req.member_id.unwrap();
+        let total_amount: f64 = validated_items.iter().map(|(_, qty, _, price, _)| price * (*qty as f64)).sum();
+        let balance: f64 = conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0)).unwrap_or(0.0);
+        if balance < total_amount {
+            return Err("会员余额不足".to_string());
+        }
+        conn.execute(
+            "UPDATE members SET balance = balance - ?1, total_spent = total_spent + ?1 WHERE id = ?2",
+            params![total_amount, mid],
+        ).map_err(|e| format!("扣减余额失败: {}", e))?;
+        conn.execute(
+            "INSERT INTO balance_logs (member_id, amount, balance_before, balance_after, reason, payment_method) 
+             SELECT ?1, -?2, balance, balance - ?2, 'product_sale', ?3 FROM members WHERE id = ?1",
+            params![mid, total_amount, &pm],
+        ).ok();
+    }
+
     let mut sales = Vec::new();
     for (pid, qty, name, unit_price, source) in &validated_items {
         let total = round_to_two(*unit_price * *qty as f64);
