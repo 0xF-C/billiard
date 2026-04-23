@@ -157,6 +157,26 @@ pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
                     return Err(format!("套餐价格 ¥{:.2}，会员余额不足", price));
                 }
             }
+        } else {
+            let min_hours: i32 = tx
+                .query_row("SELECT min_hours FROM tables WHERE id = ?1", params![req.table_id], |r| r.get(0))
+                .unwrap_or(0);
+            if min_hours > 0 {
+                let hourly_rate: f64 = tx
+                    .query_row(
+                        "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+                         FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
+                        params![req.table_id],
+                        |r| r.get(0),
+                    )
+                    .unwrap_or(30.0);
+                let min_amount = (min_hours as f64) * hourly_rate;
+                let deposit = req.deposit.unwrap_or(0.0);
+                if deposit < min_amount {
+                    tx.rollback().ok();
+                    return Err(format!("最低消费 ¥{:.2}，押金不足", min_amount));
+                }
+            }
         }
 
         let now = chrono::Utc::now().to_rfc3339();
@@ -693,7 +713,7 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
         params![table_id],
     ).map_err(|e| e.to_string())?;
 
-    // Fix #1: Actually refund deposit to member balance
+    // 散客押金也已记录在 deposit_refunded 字段，会员余额退款单独处理
     if refund_amount > 0.0 {
         if let Some(mid) = member_id {
             conn.execute(
