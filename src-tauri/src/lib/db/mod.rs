@@ -610,3 +610,75 @@ pub fn init_role_permissions() {
     }
     info!("Role permissions initialized");
 }
+
+// Marketing tables initialization
+pub fn init_marketing_tables() {
+    let conn = DB.lock();
+    conn.execute_batch(r#"
+        CREATE TABLE IF NOT EXISTS stock_io_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            product_name TEXT,
+            type TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            before_stock INTEGER NOT NULL,
+            after_stock INTEGER NOT NULL,
+            unit_price REAL DEFAULT 0,
+            total_price REAL DEFAULT 0,
+            reason TEXT,
+            remark TEXT,
+            operator_id INTEGER,
+            operator TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS points_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id INTEGER NOT NULL,
+            member_name TEXT,
+            phone TEXT,
+            points INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            order_id INTEGER,
+            remark TEXT,
+            operator TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS coupons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            coupon_type TEXT NOT NULL,
+            discount REAL NOT NULL,
+            min_amount REAL DEFAULT 0,
+            quantity INTEGER NOT NULL,
+            used_count INTEGER DEFAULT 0,
+            valid_from TEXT,
+            valid_to TEXT,
+            status TEXT DEFAULT 'active',
+            description TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS coupon_claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            coupon_id INTEGER NOT NULL,
+            member_id INTEGER NOT NULL,
+            member_name TEXT,
+            status TEXT DEFAULT 'unused',
+            used_at TEXT,
+            used_order_id INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS sms_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            template_type TEXT DEFAULT 'notification',
+            usage_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+    "#).ok();
+    info!("Marketing tables initialized");
+}

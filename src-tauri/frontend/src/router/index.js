@@ -61,6 +61,7 @@ const routes = [
       { path: 'table-efficiency', name: 'TableEfficiency', component: () => import('../views/TableEfficiencyView.vue') },
       { path: 'payment-methods', name: 'PaymentMethods', component: () => import('../views/PaymentMethodsView.vue') },
       { path: 'cost-accounting', name: 'CostAccounting', component: () => import('../views/CostAccountingView.vue') },
+      { path: 'member-recharge', name: 'MemberRecharge', component: () => import('../views/MemberRechargeView.vue') },
       { path: 'export-reports', name: 'ExportReports', component: () => import('../views/ExportReportsView.vue') },
 
       // 库存管理

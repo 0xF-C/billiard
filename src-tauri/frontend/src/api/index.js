@@ -203,6 +203,42 @@ export const updateExpense = (id, req) =>
 export const deleteExpense = (id) =>
   invoke("cmd_delete_expense", { token: authToken, id }).catch((err) => handleError(err, "删除支出"));
 
+// ======== 库存出入库 ========
+export const getStockIoRecords = (params = {}) =>
+  invoke("cmd_get_stock_io_records", { token: authToken, productId: params.productId || null, ioType: params.ioType || null, days: params.days || null })
+    .catch((err) => handleError(err, "获取库存出入库记录"));
+export const createStockIn = (req) =>
+  invoke("cmd_create_stock_in", { token: authToken, req }).catch((err) => handleError(err, "创建入库"));
+export const createStockOut = (req) =>
+  invoke("cmd_create_stock_out", { token: authToken, req }).catch((err) => handleError(err, "创建出库"));
+
+// ======== 积分管理 ========
+export const getPointsLogs = (params = {}) =>
+  invoke("cmd_get_points_logs", { token: authToken, memberId: params.memberId || null, days: params.days || null })
+    .catch((err) => handleError(err, "获取积分记录"));
+export const addPoints = (req) =>
+  invoke("cmd_add_points", { token: authToken, req }).catch((err) => handleError(err, "添加积分"));
+
+// ======== 优惠券管理 ========
+export const getCoupons = (status) =>
+  invoke("cmd_get_coupons", { token: authToken, status: status || null }).catch((err) => handleError(err, "获取优惠券"));
+export const createCoupon = (req) =>
+  invoke("cmd_create_coupon", { token: authToken, req }).catch((err) => handleError(err, "创建优惠券"));
+export const updateCoupon = (id, req) =>
+  invoke("cmd_update_coupon", { token: authToken, id, req }).catch((err) => handleError(err, "更新优惠券"));
+export const deleteCoupon = (id) =>
+  invoke("cmd_delete_coupon", { token: authToken, id }).catch((err) => handleError(err, "删除优惠券"));
+export const claimCoupon = (couponId, memberId) =>
+  invoke("cmd_claim_coupon", { token: authToken, couponId, memberId }).catch((err) => handleError(err, "领取优惠券"));
+
+// ======== 短信营销 ========
+export const getSmsTemplates = () =>
+  invoke("cmd_get_sms_templates", { token: authToken }).catch((err) => handleError(err, "获取短信模板"));
+export const createSmsTemplate = (req) =>
+  invoke("cmd_create_sms_template", { token: authToken, req }).catch((err) => handleError(err, "创建短信模板"));
+export const deleteSmsTemplate = (id) =>
+  invoke("cmd_delete_sms_template", { token: authToken, id }).catch((err) => handleError(err, "删除短信模板"));
+
 // ======== 销售记录 ========
 export const getSalesRecords = (params = {}) =>
   invoke("cmd_get_sales_records", { token: authToken, tableId: params.tableId || null, memberId: params.memberId || null, days: params.days || null })
@@ -408,6 +444,19 @@ export default {
   createExpense,
   updateExpense,
   deleteExpense,
+  getStockIoRecords,
+  createStockIn,
+  createStockOut,
+  getPointsLogs,
+  addPoints,
+  getCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
+  claimCoupon,
+  getSmsTemplates,
+  createSmsTemplate,
+  deleteSmsTemplate,
   backupDatabase,
   restoreDatabase,
   getRelayStatus,

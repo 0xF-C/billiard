@@ -639,6 +639,123 @@ fn cmd_list_usb_printers() -> Vec<String> {
     list_usb_printers()
 }
 
+// ======== 库存出入库 ========
+#[tauri::command]
+fn cmd_get_stock_io_records(token: String, product_id: Option<i64>, io_type: Option<String>, days: Option<i32>) -> Vec<serde_json::Value> {
+    verify_token(&token);
+    get_stock_io_records(product_id, io_type, days)
+}
+
+#[tauri::command]
+fn cmd_create_stock_in(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    let operator_id = verify_token(&token);
+    let product_id = req.get("product_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let quantity = req.get("quantity").and_then(|v| v.as_i64()).unwrap_or(0);
+    let reason = req.get("reason").and_then(|v| v.as_str()).map(String::from);
+    let remark = req.get("remark").and_then(|v| v.as_str()).map(String::from);
+    let unit_price = req.get("unit_price").and_then(|v| v.as_f64());
+    create_stock_in(product_id, quantity, reason, remark, unit_price, operator_id)
+}
+
+#[tauri::command]
+fn cmd_create_stock_out(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    let operator_id = verify_token(&token);
+    let product_id = req.get("product_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let quantity = req.get("quantity").and_then(|v| v.as_i64()).unwrap_or(0);
+    let reason = req.get("reason").and_then(|v| v.as_str()).map(String::from);
+    let remark = req.get("remark").and_then(|v| v.as_str()).map(String::from);
+    create_stock_out(product_id, quantity, reason, remark, operator_id)
+}
+
+// ======== 积分管理 ========
+#[tauri::command]
+fn cmd_get_points_logs(token: String, member_id: Option<i64>, days: Option<i32>) -> Vec<serde_json::Value> {
+    verify_token(&token);
+    get_points_logs(member_id, days)
+}
+
+#[tauri::command]
+fn cmd_add_points(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    let operator_id = verify_token(&token);
+    let member_id = req.get("member_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let points = req.get("points").and_then(|v| v.as_i64()).unwrap_or(0);
+    let points_type = req.get("points_type").and_then(|v| v.as_str()).map(String::from);
+    let remark = req.get("remark").and_then(|v| v.as_str()).map(String::from);
+    let order_id = req.get("order_id").and_then(|v| v.as_i64());
+    add_points(member_id, points, points_type, remark, order_id, operator_id)
+}
+
+// ======== 优惠券管理 ========
+#[tauri::command]
+fn cmd_get_coupons(token: String, status: Option<String>) -> Vec<serde_json::Value> {
+    verify_token(&token);
+    get_coupons(status)
+}
+
+#[tauri::command]
+fn cmd_create_coupon(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    verify_token(&token);
+    let name = req.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let coupon_type = req.get("coupon_type").and_then(|v| v.as_str()).map(String::from);
+    let discount = req.get("discount").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let min_amount = req.get("min_amount").and_then(|v| v.as_f64());
+    let quantity = req.get("quantity").and_then(|v| v.as_i64()).unwrap_or(0);
+    let valid_from = req.get("valid_from").and_then(|v| v.as_str()).map(String::from);
+    let valid_to = req.get("valid_to").and_then(|v| v.as_str()).map(String::from);
+    let status = req.get("status").and_then(|v| v.as_str()).map(String::from);
+    let description = req.get("description").and_then(|v| v.as_str()).map(String::from);
+    create_coupon(name, coupon_type, discount, min_amount, quantity, valid_from, valid_to, status, description)
+}
+
+#[tauri::command]
+fn cmd_update_coupon(token: String, id: i64, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    verify_token(&token);
+    let name = req.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let coupon_type = req.get("coupon_type").and_then(|v| v.as_str()).map(String::from);
+    let discount = req.get("discount").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let min_amount = req.get("min_amount").and_then(|v| v.as_f64());
+    let quantity = req.get("quantity").and_then(|v| v.as_i64()).unwrap_or(0);
+    let valid_from = req.get("valid_from").and_then(|v| v.as_str()).map(String::from);
+    let valid_to = req.get("valid_to").and_then(|v| v.as_str()).map(String::from);
+    let status = req.get("status").and_then(|v| v.as_str()).map(String::from);
+    let description = req.get("description").and_then(|v| v.as_str()).map(String::from);
+    update_coupon(id, name, coupon_type, discount, min_amount, quantity, valid_from, valid_to, status, description)
+}
+
+#[tauri::command]
+fn cmd_delete_coupon(token: String, id: i64) -> Result<(), String> {
+    verify_token(&token);
+    delete_coupon(id)
+}
+
+#[tauri::command]
+fn cmd_claim_coupon(token: String, coupon_id: i64, member_id: i64) -> Result<serde_json::Value, String> {
+    verify_token(&token);
+    claim_coupon(coupon_id, member_id)
+}
+
+// ======== 短信营销 ========
+#[tauri::command]
+fn cmd_get_sms_templates(token: String) -> Vec<serde_json::Value> {
+    verify_token(&token);
+    get_sms_templates()
+}
+
+#[tauri::command]
+fn cmd_create_sms_template(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    verify_token(&token);
+    let name = req.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let content = req.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let template_type = req.get("template_type").and_then(|v| v.as_str()).map(String::from);
+    create_sms_template(name, content, template_type)
+}
+
+#[tauri::command]
+fn cmd_delete_sms_template(token: String, id: i64) -> Result<(), String> {
+    verify_token(&token);
+    delete_sms_template(id)
+}
+
 fn main() {
     env_logger::init();
     info!("Starting Billiard Manager Tauri App");
@@ -749,6 +866,19 @@ fn main() {
             cmd_print_receipt,
             cmd_test_printer,
             cmd_list_usb_printers,
+            cmd_get_stock_io_records,
+            cmd_create_stock_in,
+            cmd_create_stock_out,
+            cmd_get_points_logs,
+            cmd_add_points,
+            cmd_get_coupons,
+            cmd_create_coupon,
+            cmd_update_coupon,
+            cmd_delete_coupon,
+            cmd_claim_coupon,
+            cmd_get_sms_templates,
+            cmd_create_sms_template,
+            cmd_delete_sms_template,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -218,6 +218,7 @@ const navModules = [
       { path: '/table-efficiency', titleKey: 'sub_table_efficiency' },
       { path: '/payment-methods', titleKey: 'sub_payment_methods' },
       { path: '/cost-accounting', titleKey: 'sub_cost_accounting' },
+      { path: '/member-recharge', titleKey: 'sub_member_recharge' },
       { path: '/export-reports', titleKey: 'sub_export_reports' },
     ]
   },
