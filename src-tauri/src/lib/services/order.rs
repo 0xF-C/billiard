@@ -1,7 +1,7 @@
 use crate::lib::db::DB;
 use crate::lib::models::*;
 use crate::lib::services::settings::load_settings;
-use crate::lib::utils::{calc_bill_minutes_with_params, validate_open_table_request, validate_close_table_request, today_local, BillingParams, calc_extra_minutes, round_to_two};
+use crate::lib::utils::{calc_bill_minutes_with_params, validate_open_table_request, validate_close_table_request, today_local, BillingParams, calc_extra_minutes, calc_extra_minutes_with_params, round_to_two};
 use crate::lib::services::settings::get_member_day_discount;
 use crate::lib::services::printer::print_receipt;
 use chrono::{DateTime, Utc};
@@ -361,7 +361,7 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
         let pkg_duration = (hours * 60.0) as i64;
         if duration > pkg_duration {
             let extra_mins = duration - pkg_duration;
-            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+            let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &billing_params);
             total += extra_fee;
         }
     }
@@ -482,7 +482,7 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
         let pkg_duration = (hours * 60.0) as i64;
         if duration > pkg_duration {
             let extra_mins = duration - pkg_duration;
-            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+            let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &billing_params);
             total += extra_fee;
         }
     }
@@ -674,7 +674,7 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
         let pkg_duration = (hours * 60.0) as i64;
         if duration > pkg_duration {
             let extra_mins = duration - pkg_duration;
-            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+            let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &billing_params);
             total += extra_fee;
         }
     }
@@ -857,7 +857,7 @@ fn calc_order_billing(conn: &Connection, order_id: i64, duration: i64, hourly_ra
         let pkg_duration = (hours * 60.0) as i64;
         if duration > pkg_duration {
             let extra_mins = duration - pkg_duration;
-            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+            let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &billing_params);
             total += extra_fee;
         }
     }
@@ -1035,7 +1035,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
             let pkg_duration = (hours * 60.0) as i64;
             if duration > pkg_duration {
                 let extra_mins = duration - pkg_duration;
-                let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+                let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &billing_params);
                 total += extra_fee;
             }
         }

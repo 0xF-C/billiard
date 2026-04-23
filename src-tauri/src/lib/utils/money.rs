@@ -156,10 +156,15 @@ pub fn calc_bill_minutes_with_params(duration: i64, params: &BillingParams) -> i
 }
 
 pub fn calc_extra_minutes(extra_mins: i64, hourly_rate: f64) -> f64 {
+    calc_extra_minutes_with_params(extra_mins, hourly_rate, &BillingParams::default_rules())
+}
+
+pub fn calc_extra_minutes_with_params(extra_mins: i64, hourly_rate: f64, params: &BillingParams) -> f64 {
     if extra_mins <= 0 {
         return 0.0;
     }
-    (extra_mins as f64 / 60.0) * hourly_rate
+    let bill_mins = calc_bill_minutes_with_params(extra_mins, params);
+    (bill_mins as f64 / 60.0) * hourly_rate
 }
 
 #[cfg(test)]
