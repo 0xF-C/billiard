@@ -284,7 +284,7 @@ pub fn init_database() -> SqliteResult<Connection> {
     Ok(conn)
 }
 
-const CURRENT_SCHEMA_VERSION: i32 = 4;
+const CURRENT_SCHEMA_VERSION: i32 = 5;
 
 fn get_current_version(conn: &Connection) -> SqliteResult<i32> {
     let count: i32 = conn.query_row("SELECT COUNT(*) FROM schema_version", [], |r| r.get(0))?;
@@ -522,6 +522,13 @@ fn run_migrations(conn: &Connection) -> SqliteResult<()> {
         ).ok();
         
         conn.execute("INSERT INTO schema_version (version) VALUES (4)", []).ok();
+    }
+
+    if current_version < 5 {
+        info!("Running migration v5: add deposit_change column to orders");
+        conn.execute("ALTER TABLE orders ADD COLUMN deposit_change REAL DEFAULT 0", []).ok();
+        
+        conn.execute("INSERT INTO schema_version (version) VALUES (5)", []).ok();
     }
 
     if current_version < CURRENT_SCHEMA_VERSION {

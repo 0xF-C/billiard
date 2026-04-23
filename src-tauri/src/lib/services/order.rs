@@ -22,7 +22,8 @@ fn get_order_by_id_locked(conn: &Connection, order_id: i64) -> Result<Order, Str
                 o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                 o.total_amount, o.discount_amount, o.deposit, o.change_amount, o.final_amount, o.status,
                 o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
-                o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method
+                o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
+                COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0)
          FROM orders o 
          LEFT JOIN tables t ON o.table_id = t.id 
          LEFT JOIN members m ON o.member_id = m.id 
@@ -56,6 +57,7 @@ fn get_order_by_id_locked(conn: &Connection, order_id: i64) -> Result<Order, Str
                 deposit_refunded: row.get(23)?,
                 refund_method: row.get(24)?,
                 payment_method: row.get(25)?,
+                deposit_change: row.get(26)?,
             })
         },
     ).map_err(|e| e.to_string())
@@ -67,7 +69,8 @@ fn get_order_by_id_tx(tx: &rusqlite::Transaction, order_id: i64) -> Result<Order
                 o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                 o.total_amount, o.discount_amount, o.deposit, o.change_amount, o.final_amount, o.status,
                 o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
-                o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method
+                o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
+                COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0)
          FROM orders o 
          LEFT JOIN tables t ON o.table_id = t.id 
          LEFT JOIN members m ON o.member_id = m.id 
@@ -101,6 +104,7 @@ fn get_order_by_id_tx(tx: &rusqlite::Transaction, order_id: i64) -> Result<Order
                 deposit_refunded: row.get(23)?,
                 refund_method: row.get(24)?,
                 payment_method: row.get(25)?,
+                deposit_change: row.get(26)?,
             })
         },
     ).map_err(|e| e.to_string())
@@ -207,7 +211,8 @@ pub fn get_active_orders() -> Vec<Order> {
                 o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                 o.total_amount, o.discount_amount, o.deposit, o.change_amount, o.final_amount, o.status,
                 o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
-                o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method
+                o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
+                COALESCE(o.deposit_change, 0)
          FROM orders o 
          LEFT JOIN tables t ON o.table_id = t.id 
          LEFT JOIN members m ON o.member_id = m.id 
@@ -249,6 +254,7 @@ pub fn get_active_orders() -> Vec<Order> {
             deposit_refunded: row.get(23)?,
             refund_method: row.get(24)?,
             payment_method: row.get(25)?,
+            deposit_change: row.get(26)?,
         })
     }) {
         Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
@@ -351,13 +357,14 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
             )
             .unwrap_or(1.0);
 
-        let final_factor = member_discount * (1.0 - (member_day_discount as f64 / 100.0));
+        let final_factor = (member_discount * (1.0 - (member_day_discount as f64 / 100.0))).max(0.0).min(1.0);
         discount = total * (1.0 - final_factor);
     }
 
     let final_amount = (total - discount).max(0.0);
     let change_amount = if deposit > final_amount { deposit - final_amount } else { 0.0 };
     let net_final = (final_amount - deposit).max(0.0);
+    let deposit_change = if deposit > final_amount { deposit - final_amount } else { 0.0 };
 
     let mut balance_paid = 0.0;
     if let Some(mid) = member_id {
@@ -384,7 +391,7 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
     let now_str = now.to_rfc3339();
     let rows_affected = conn.execute(
         "UPDATE orders SET end_time = ?1, duration_minutes = ?2, total_amount = ?3, discount_amount = ?4, 
-         change_amount = ?5, final_amount = ?6, payment_method = ?7, status = '已结账' WHERE id = ?8 AND status = '进行中'",
+         change_amount = ?5, final_amount = ?6, payment_method = ?7, deposit_change = ?8, status = '已结账' WHERE id = ?9 AND status = '进行中'",
         params![
             now_str,
             duration,
@@ -393,6 +400,7 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
             change_amount,
             net_final,
             payment_method,
+            deposit_change,
             order_id
         ],
     ).map_err(|e| e.to_string())?;
@@ -470,13 +478,14 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
             )
             .unwrap_or(1.0);
 
-        let final_factor = member_discount * (1.0 - (member_day_discount as f64 / 100.0));
+        let final_factor = (member_discount * (1.0 - (member_day_discount as f64 / 100.0))).max(0.0).min(1.0);
         discount = total * (1.0 - final_factor);
     }
 
     let final_amount = (total - discount).max(0.0);
     let change_amount = if deposit > final_amount { deposit - final_amount } else { 0.0 };
     let net_final = (final_amount - deposit).max(0.0);
+    let deposit_change = if deposit > final_amount { deposit - final_amount } else { 0.0 };
 
     let mut balance_paid = 0.0;
     if let Some(mid) = member_id {
@@ -503,7 +512,7 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
     let now_str = now.to_rfc3339();
     let rows_affected = tx.execute(
         "UPDATE orders SET end_time = ?1, duration_minutes = ?2, total_amount = ?3, discount_amount = ?4, 
-         change_amount = ?5, final_amount = ?6, payment_method = ?7, status = '已结账' WHERE id = ?8 AND status = '进行中'",
+         change_amount = ?5, final_amount = ?6, payment_method = ?7, deposit_change = ?8, status = '已结账' WHERE id = ?9 AND status = '进行中'",
         params![
             now_str,
             duration,
@@ -512,6 +521,7 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
             change_amount,
             net_final,
             payment_method,
+            deposit_change,
             order_id
         ],
     ).map_err(|e| e.to_string())?;
@@ -544,7 +554,8 @@ pub fn get_orders(status: Option<String>) -> Vec<Order> {
                     o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                     o.total_amount, o.discount_amount, o.deposit, o.change_amount, o.final_amount, o.status,
                     o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
-                    o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method
+                    o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
+                    COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0)
              FROM orders o 
              LEFT JOIN tables t ON o.table_id = t.id 
              LEFT JOIN members m ON o.member_id = m.id 
@@ -585,6 +596,7 @@ pub fn get_orders(status: Option<String>) -> Vec<Order> {
             deposit_refunded: row.get(23)?,
             refund_method: row.get(24)?,
             payment_method: row.get(25)?,
+            deposit_change: row.get(26)?,
         })
     }) {
         Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
@@ -656,16 +668,17 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
 
     let final_amount = (total - discount).max(0.0);
     let refund_amount = if deposit > final_amount { (deposit - final_amount).max(0.0) } else { 0.0 };
+    let deposit_change = refund_amount;
     let now_str = now.to_rfc3339();
 
     // Fix #3: Atomic status update - only succeeds if status is still '进行中'
     let rows_affected = conn.execute(
         "UPDATE orders SET end_time = ?1, duration_minutes = ?2, total_amount = ?3, discount_amount = ?4,
-         final_amount = ?5, cancel_time = ?6, cancel_reason = ?7, deposit_refunded = ?8,
-         refund_method = ?9, status = '已取消' WHERE id = ?10 AND status = '进行中'",
+         final_amount = ?5, cancel_time = ?6, cancel_reason = ?7, deposit_refunded = ?8, deposit_change = ?9,
+         refund_method = ?10, status = '已取消' WHERE id = ?11 AND status = '进行中'",
         params![
             now_str, duration, total, discount, final_amount,
-            now_str, reason, refund_amount,
+            now_str, reason, refund_amount, deposit_change,
             if refund_amount > 0.0 { Some("cash") } else { None },
             order_id
         ],

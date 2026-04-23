@@ -59,6 +59,7 @@ pub struct Order {
     pub deposit_refunded: f64,
     pub refund_method: Option<String>,
     pub payment_method: Option<String>,
+    pub deposit_change: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
