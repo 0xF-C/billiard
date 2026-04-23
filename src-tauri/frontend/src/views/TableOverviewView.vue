@@ -302,6 +302,51 @@ const closePaymentMethod = ref('cash')
 const cancelDlg = ref(false)
 const cancelReason = ref('')
 
+const billingRules = ref({ freeMinutes: 5, billingInterval: 30, applyRounding: true })
+
+const calcBillMinutes = (duration, rules) => {
+  const free = rules.freeMinutes || 0
+  const interval = rules.billingInterval || 30
+  const applyRounding = rules.applyRounding !== false
+  
+  if (!applyRounding) {
+    return Math.max(duration - free, 0)
+  }
+  
+  if (duration < free) return 0
+  
+  const billable = duration - free
+  if (billable < interval) return free + interval
+  
+  const grace = Math.max(Math.floor(interval / 6), 1)
+  const fullUnits = Math.floor(billable / interval)
+  const rem = billable % interval
+  const roundedUnits = rem >= grace ? fullUnits + 1 : fullUnits
+  
+  return free + roundedUnits * interval
+}
+
+const rnd = (n, d) => Math.round(n * Math.pow(10, d)) / Math.pow(10, d)
+
+const calcCurrentCost = (table) => {
+  const order = table.current_order
+  const dur = Math.max(Math.floor((Date.now() - new Date(order.start_time.replace(' ', 'T'))) / 60000), 1)
+  
+  const billMin = calcBillMinutes(dur, billingRules.value)
+  const area = areas.value.find(a => a.id === table.area_id)
+  const rate = area?.rate_per_hour || 30
+  const total = (billMin / 60) * rate
+  
+  if (order.member_id) {
+    const m = members.value.find(x => x.id === order.member_id)
+    if (m) {
+      const memberDiscount = m.discount || 1
+      return (total * memberDiscount).toFixed(2)
+    }
+  }
+  return total.toFixed(2)
+}
+
 const stats = computed(() => ({
   total: tables.value.length,
   free: tables.value.filter(t => t.status === '空闲').length,
@@ -358,32 +403,6 @@ const formatDateTime = (time) => {
   return time.replace('T', ' ').slice(0, 16)
 }
 
-const rnd = (n, d) => Math.round(n * Math.pow(10, d)) / Math.pow(10, d)
-
-const calcCurrentCost = (table) => {
-  const order = table.current_order
-  const dur = Math.max(Math.floor((Date.now() - new Date(order.start_time.replace(' ', 'T'))) / 60000), 1)
-  let billMin = 0
-  if (dur < 5) billMin = 0
-  else if (dur < 30) billMin = 30
-  else if (dur < 60) billMin = 60
-  else {
-    const hours = Math.floor(dur / 60)
-    const remaining = dur % 60
-    if (remaining < 5) billMin = hours * 60
-    else if (remaining < 30) billMin = hours * 60 + 30
-    else billMin = hours * 60 + 60
-  }
-  const area = areas.value.find(a => a.id === table.area_id)
-  const rate = area?.rate_per_hour || 30
-  const total = (billMin / 60) * rate
-  if (order.member_id) {
-    const m = members.value.find(x => x.id === order.member_id)
-    if (m) return (total * m.discount).toFixed(2)
-  }
-  return total.toFixed(2)
-}
-
 const loadData = async () => {
   try {
     tables.value = await getTables(true)
@@ -392,6 +411,11 @@ const loadData = async () => {
     const settings = await getSettings()
     packages.value = settings.packages || []
     autoCloseInterval.value = settings.autoClose?.intervalMinutes || 10
+    if (settings.billingRules) {
+      billingRules.value.freeMinutes = settings.billingRules.freeMinutes ?? 5
+      billingRules.value.billingInterval = settings.billingRules.billingInterval ?? 30
+      billingRules.value.applyRounding = settings.billingRules.applyRounding ?? true
+    }
   } catch (e) { console.error(e) }
 }
 

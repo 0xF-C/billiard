@@ -529,88 +529,44 @@ const calcCurrentCost = (table) => {
   if (!table.current_order) return '0.00'
   const order = table.current_order
   const dur = Math.max(Math.floor((Date.now() - new Date(order.start_time.replace(' ', 'T'))) / 60000), 1)
-  const total = (dur / 60) * (table.rate_per_hour || 30)
+  
+  // 使用后端相同的计费规则计算
+  const billMin = calcBillMinutes(dur, billingRules.value)
+  const total = (billMin / 60) * (table.rate_per_hour || 30)
+  
   if (order.member_id) {
     const m = members.value.find(x => x.id === order.member_id)
     if (m) {
-      const discount = rnd(total * (1 - m.discount), 2)
+      const memberDiscount = m.discount || 1
+      const dayDiscount = billingRules.value.memberDay?.discount || 0
+      const finalFactor = memberDiscount * (1 - dayDiscount / 100)
+      const discount = total * (1 - finalFactor)
       return (total - discount).toFixed(2)
     }
   }
   return total.toFixed(2)
 }
 
-const searchMembers = (query, callback) => {
-  if (!query) { callback([]); return }
-  const kw = query.toLowerCase()
-  const results = members.value
-    .filter(m => m.phone.includes(kw) || m.name.toLowerCase().includes(kw))
-    .slice(0, 10)
-    .map(m => ({ ...m, value: `${m.name} - ${m.phone}` }))
-  callback(results)
-}
-
-const onMemberSelect = (item) => {
-  selectedMember.value = item
-  memberSearch.value = ''
-  customerType.value = 'member'
-}
-
-const onMemberSearchChange = (val) => {
-  if (!val) {
-    selectedMember.value = null
+const calcBillMinutes = (duration, rules) => {
+  const free = rules.freeMinutes || 0
+  const interval = rules.billingInterval || 30
+  const applyRounding = rules.applyRounding !== false
+  
+  if (!applyRounding) {
+    return Math.max(duration - free, 0)
   }
-}
-
-const clearMember = () => {
-  selectedMember.value = null
-  memberSearch.value = ''
-}
-
-const doOpen = (item) => {
-  sel.value = item
-  customerType.value = 'walkin'
-  memberSearch.value = ''
-  selectedMember.value = null
-  selectedPackage.value = null
-  walkinForm.value = { name: '', phone: '', useDeposit: false, deposit: 100 }
-  openDlg.value = true
-}
-
-const getMemberDayDiscount = () => {
-  const today = new Date()
-  const dow = today.getDay()
-  const mm = String(today.getMonth() + 1).padStart(2, '0')
-  const dd = String(today.getDate()).padStart(2, '0')
-  const todayStr = `${mm}-${dd}`
-
-  if (specialRates.weekend?.enabled && specialRates.weekend.days?.length) {
-    const monBased = dow === 0 ? 7 : dow
-    if (specialRates.weekend.days.some(d => d === monBased)) {
-      return (specialRates.weekend.discount || 10)
-    }
-  }
-
-  const mday = billingRules.memberDay
-  if (mday?.enabled && mday.dates) {
-    if (mday.dates.split(',').some(d => d.trim() === todayStr)) {
-      return mday.discount || 0
-    }
-  }
-  return 0
-}
-
-const calcBillMinutes = (dur) => {
-  const free = billingRules.freeMinutes || 5
-  const interval = billingRules.billingInterval || 30
-  if (!billingRules.applyRounding) return Math.max(0, dur - free)
-  if (dur < free) return 0
-  const billable = dur - free
-  if (billable <= interval) return free + interval
+  
+  if (duration < free) return 0
+  
+  const billable = duration - free
+  if (billable < interval) return free + interval
+  
+  const grace = Math.max(Math.floor(interval / 6), 1)
   const fullUnits = Math.floor(billable / interval)
   const rem = billable % interval
-  const grace = Math.max(1, Math.floor(interval / 6))
-  return free + (rem >= grace ? fullUnits + 1 : fullUnits) * interval
+  const roundedUnits = rem >= grace ? fullUnits + 1 : fullUnits
+  
+  return free + roundedUnits * interval
 }
 
 const doClose = async (item) => {
@@ -626,10 +582,12 @@ const doClose = async (item) => {
       const pkgDur = Math.floor((preview.value.package_hours || 0) * 60)
       if (dur > pkgDur) {
         const extra = dur - pkgDur
-        total += (extra / 60) * rate
+        // 套餐超额时间也使用相同计费规则
+        const extraBillMin = calcBillMinutes(extra, billingRules.value)
+        total += (extraBillMin / 60) * rate
       }
     } else {
-      const billMin = calcBillMinutes(dur)
+      const billMin = calcBillMinutes(dur, billingRules.value)
       total = (billMin / 60) * rate
     }
     total = rnd(total, 2)
@@ -647,25 +605,25 @@ const doClose = async (item) => {
         memberBalance = m.balance || 0
         const mdd = getMemberDayDiscount()
         const memberDisc = m.discount || 1
-        const mdayDisc = 1 - (mdd / 100)
-        const finalFactor = memberDisc * mdayDisc
+        const finalFactor = memberDisc * (1 - mdd / 100)
         disc = rnd(total * (1 - finalFactor), 2)
         fin = rnd(total - disc, 2)
 
-        if (memberBalance > 0 && fin > 0) {
-          balancePaid = Math.min(memberBalance, fin)
-          fin = Math.max(0, fin - balancePaid)
+        // 后端扣减顺序：先减押金，再扣余额
+        const afterDeposit = Math.max(0, fin - deposit)
+        if (memberBalance > 0 && afterDeposit > 0) {
+          balancePaid = Math.min(memberBalance, afterDeposit)
+          fin = afterDeposit - balancePaid
         }
+        change = Math.max(0, deposit - (fin + balancePaid))
       }
-    }
-
-    if (deposit > 0) {
-      const originalCash = fin
+    } else {
+      // 散客：直接用押金抵扣
       fin = Math.max(0, fin - deposit)
-      change = deposit > originalCash ? deposit - originalCash : 0
+      change = Math.max(0, deposit - total + disc)
     }
 
-    pay.value = { total, discount: disc, final: fin, deposit, change: Math.max(0, change), balancePaid, memberBalance }
+    pay.value = { total, discount: disc, final: fin, deposit, change, balancePaid, memberBalance }
     closeDlg.value = true
   } catch(e) { ElMessage.error(e.response?.data?.error || t('operationFailed')) }
 }
