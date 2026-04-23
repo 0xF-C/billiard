@@ -1047,7 +1047,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
             Ok(s) => s,
             Err(_) => continue,
         };
-        let duration = (chrono::Utc::now() - start.with_timezone(&Utc)).num_minutes();
+        let duration = (chrono::Utc::now() - start.with_timezone(&Utc)).num_minutes().max(1);
 
         let hourly_rate: f64 = tx
             .query_row(
@@ -1073,14 +1073,27 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
         }
 
         let mut available = deposit;
+        let mut discount = 0.0;
         if let Some(mid) = member_id {
+            let member_discount: f64 = tx
+                .query_row(
+                    "SELECT discount FROM members WHERE id = ?1",
+                    params![mid],
+                    |r| r.get(0),
+                )
+                .unwrap_or(1.0);
+            let member_day_discount = get_member_day_discount();
+            let final_factor = (member_discount * (1.0 - (member_day_discount as f64 / 100.0))).max(0.0).min(1.0);
+            discount = total * (1.0 - final_factor);
             let balance: f64 = tx
                 .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
                 .unwrap_or(0.0);
             available += balance.max(0.0);
         }
 
-        if available < total {
+        let final_total = (total - discount).max(0.0);
+
+        if available < final_total {
             let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
             match close_order_with_tx(&tx, order_id, req, 0, &billing_params) {
                 Ok(_order) => {
@@ -1089,7 +1102,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
                         order_id,
                         table_name,
                         reason: "余额/押金不足".to_string(),
-                        total_amount: total,
+                        total_amount: final_total,
                         available_amount: available,
                     });
                 }
