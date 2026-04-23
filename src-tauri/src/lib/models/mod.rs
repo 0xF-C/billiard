@@ -510,6 +510,30 @@ pub struct RealtimeCheckResult {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RealtimeBillingStatus {
+    pub order_id: i64,
+    pub table_id: i64,
+    pub table_name: String,
+    pub member_id: Option<i64>,
+    pub member_name: String,
+    pub start_time: String,
+    pub duration_minutes: i64,
+    pub bill_minutes: i64,
+    pub current_amount: f64,
+    pub hourly_rate: f64,
+    pub package_name: Option<String>,
+    pub package_remaining_minutes: i64,
+    pub deposit: f64,
+    pub member_balance: f64,
+    pub available: f64,
+    pub remaining_minutes: i64,
+    pub remaining_warning: String,
+    pub warning_level: String,
+    pub discount_amount: f64,
+    pub net_amount: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Printer {
     pub id: i64,
     pub name: String,

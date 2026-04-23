@@ -283,13 +283,15 @@ export const realtimeCheck = (minutes = 30) =>
 export const autoCloseExhausted = () =>
   invoke("cmd_auto_close_exhausted", { token: authToken }).catch((err) => handleError(err, "余额不足自动关台"));
 
+export const getRealtimeBillingStatus = () =>
+  invoke("cmd_get_realtime_billing_status", { token: authToken }).catch((err) => handleError(err, "实时计费状态"));
+
 export const getDbPath = () =>
   invoke("cmd_get_db_path").catch(() => "未知");
-  invoke("cmd_auto_close_exhausted", { token: authToken }).catch((err) => handleError(err, "余额不足自动关台"));
 
-// ======== 数据库 ========
 export const backupDatabase = () =>
   invoke("cmd_backup_database", { token: authToken }).catch((err) => handleError(err, "备份数据库"));
+
 export const restoreDatabase = (path) =>
   invoke("cmd_restore_database", { token: authToken, path }).catch((err) => handleError(err, "恢复数据库"));
 
@@ -464,6 +466,8 @@ export default {
   setRelay,
   checkExpiredPackages,
   realtimeCheck,
+  autoCloseExhausted,
+  getRealtimeBillingStatus,
   autoCloseExpired,
   getPendingOrders,
   createPendingOrder,

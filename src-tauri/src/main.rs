@@ -538,6 +538,12 @@ fn cmd_auto_close_exhausted(token: String) -> Vec<AutoCloseResult> {
     auto_close_exhausted()
 }
 
+#[tauri::command(rename_all = "camelCase")]
+fn cmd_get_realtime_billing_status(token: String) -> Vec<RealtimeBillingStatus> {
+    if require_auth(&token).is_err() { return vec![]; }
+    get_realtime_billing_status()
+}
+
 // ---- Backup ----
 #[tauri::command(rename_all = "camelCase")]
 fn cmd_backup_database(token: String) -> BackupResult {
@@ -850,6 +856,7 @@ fn main() {
             cmd_auto_close_expired,
             cmd_realtime_check,
             cmd_auto_close_exhausted,
+            cmd_get_realtime_billing_status,
             cmd_backup_database,
             cmd_restore_database,
             cmd_get_relay_status,

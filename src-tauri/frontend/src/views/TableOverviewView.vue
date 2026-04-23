@@ -65,11 +65,15 @@
           >
             <div class="table-number">{{ table.name }}</div>
             <div class="table-status">{{ getStatusText(table.status) }}</div>
-            <div v-if="table.status === '使用中'" class="table-timer">
+            <div v-if="table.status === '使用中'" class="table-timer" :class="getTimerClass(table.id)">
               {{ getDur(table.current_order?.start_time) }}
             </div>
-            <div v-if="table.status === '使用中'" class="table-cost">
+            <div v-if="table.status === '使用中'" class="table-cost" :class="getCostClass(table.id)">
               ¥{{ calcCurrentCost(table) }}
+            </div>
+            <div v-if="table.status === '使用中' && getBillingStatus(table.id)" class="table-remaining"
+                 :class="'remaining-' + getBillingStatus(table.id)?.warning_level">
+              {{ getBillingStatus(table.id)?.remaining_warning }}
             </div>
             <div v-if="table.current_order?.member_name" class="table-member">
               {{ table.current_order.member_name }}
@@ -268,9 +272,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-import { ElMessage, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElInput } from 'element-plus'
+import { ElMessage, ElMessageBox, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElInput } from 'element-plus'
 import { Refresh, Grid, CircleCheckFilled, Timer, Tools, Location, Warning, Check, User, Clock, Money, CircleClose, Ticket, Printer } from '@element-plus/icons-vue'
-import { getTables, getAreas, getMembers, getOrderByTable, closeTable, cancelOrder, realtimeCheck, checkExpiredPackages, autoCloseExpired, printReceipt as apiPrintReceipt, getSettings } from '../api'
+import { getTables, getAreas, getMembers, getOrderByTable, closeTable, cancelOrder, checkExpiredPackages, autoCloseExpired, printReceipt as apiPrintReceipt, getSettings, getRealtimeBillingStatus, autoCloseExhausted } from '../api'
 import { t, currentLang } from '../i18n'
 import OpenTableDialog from '../components/OpenTableDialog.vue'
 
@@ -285,6 +289,9 @@ const sel = ref(null)
 const preview = ref(null)
 const pay = ref({ total: 0, discount: 0, final: 0, deposit: 0, change: 0 })
 const submitting = ref(false)
+const billingStatuses = ref([])
+const autoCloseInterval = ref(10) // 分钟，默认10分钟
+const alertedOrders = ref(new Set()) // 已弹过预警的订单，防止重复弹框
 
 const paymentMethods = [
   { value: 'cash', label: t('cash'), icon: 'Wallet' },
@@ -384,7 +391,65 @@ const loadData = async () => {
     members.value = await getMembers()
     const settings = await getSettings()
     packages.value = settings.packages || []
+    autoCloseInterval.value = settings.autoClose?.intervalMinutes || 10
   } catch (e) { console.error(e) }
+}
+
+// 获取某个台桌的实时计费状态
+const getBillingStatus = (tableId) =>
+  billingStatuses.value.find(b => b.table_id === tableId)
+
+const getTimerClass = (tableId) => {
+  const s = getBillingStatus(tableId)
+  if (!s) return ''
+  if (s.warning_level === 'exhausted') return 'timer-exhausted'
+  if (s.warning_level === 'critical') return 'timer-critical'
+  if (s.warning_level === 'low') return 'timer-low'
+  return ''
+}
+
+const getCostClass = (tableId) => {
+  const s = getBillingStatus(tableId)
+  if (!s) return ''
+  if (s.warning_level === 'exhausted' || s.warning_level === 'critical') return 'cost-warning'
+  if (s.warning_level === 'low') return 'cost-low'
+  return ''
+}
+
+// 拉取实时计费状态并处理预警/自动关台
+const pollBillingStatus = async () => {
+  try {
+    const statuses = await getRealtimeBillingStatus()
+    billingStatuses.value = statuses
+
+    for (const s of statuses) {
+      // 预警弹窗：余额不足且未弹过
+      if ((s.warning_level === 'low' || s.warning_level === 'critical') && !alertedOrders.value.has(s.order_id)) {
+        alertedOrders.value.add(s.order_id)
+        ElMessageBox.confirm(
+          `${s.table_name} 余额不足，${s.remaining_warning}，是否立即结账？`,
+          '⚠️ 余额预警',
+          { confirmButtonText: '立即结账', cancelButtonText: '稍后', type: 'warning' }
+        ).then(async () => {
+          try {
+            const results = await autoCloseExhausted()
+            if (results && results.length > 0) {
+              ElMessage.success(`已自动结账 ${results.length} 个订单`)
+              await loadData()
+            }
+          } catch(e) { ElMessage.error(String(e)) }
+        }).catch(() => {})
+      }
+      // 余额耗尽：直接自动关台
+      if (s.warning_level === 'exhausted') {
+        try {
+          await autoCloseExhausted()
+          ElMessage.warning(`${s.table_name} 余额已耗尽，已自动结账`)
+          await loadData()
+        } catch(e) { console.error('Auto close error:', e) }
+      }
+    }
+  } catch (e) { console.error('Poll billing status error:', e) }
 }
 
 const onTableClick = async (item) => {
@@ -559,15 +624,18 @@ const checkExpiredOrders = async () => {
     }
   } catch {}
 }
-let timer = null
-let realtimeTimer = null
+let refreshTimer = null
+let billingTimer = null
 
-onMounted(() => {
-    loadData()
-    timer = setInterval(() => { loadData(); checkExpiredOrders() }, 30000)
-    realtimeTimer = setInterval(async () => { try { await realtimeCheck(30) } catch {} }, 30 * 60 * 1000)
+onMounted(async () => {
+    await loadData()
+    refreshTimer = setInterval(() => { loadData(); checkExpiredOrders() }, 30000)
+    // 余额检查/自动关台：用设置中的 autoClose.intervalMinutes 频率执行
+    billingTimer = setInterval(async () => {
+      await pollBillingStatus()
+    }, (autoCloseInterval.value || 10) * 60 * 1000)
   })
-  onUnmounted(() => { clearInterval(timer); clearInterval(realtimeTimer) })
+  onUnmounted(() => { clearInterval(refreshTimer); clearInterval(billingTimer) })
 </script>
 
 <style scoped>
@@ -669,6 +737,25 @@ onMounted(() => {
 .table-item.in-use .table-status { color: var(--accent-danger); }
 .table-item.maint .table-status { color: var(--accent-warning); }
 .table-timer { font-size: 11px; color: var(--accent-danger); font-weight: 700; font-family: var(--font-mono); }
+.table-remaining {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-top: 2px;
+}
+.remaining-normal { color: var(--accent-success); background: rgba(63,185,80,0.1); }
+.remaining-low { color: var(--accent-warning); background: rgba(210,153,34,0.12); }
+.remaining-critical { color: #ff5722; background: rgba(255,87,34,0.15); }
+.remaining-exhausted { color: #fff; background: var(--accent-danger); }
+
+.timer-critical { color: #ff5722; }
+.timer-low { color: var(--accent-warning); }
+.timer-exhausted { color: var(--accent-danger); animation: pulse 1s infinite; }
+.cost-warning { color: #ff5722; }
+.cost-low { color: var(--accent-warning); }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .table-cost { font-size: 10px; color: var(--accent-success); font-weight: 600; }
 
 .empty-card {

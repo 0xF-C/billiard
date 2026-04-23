@@ -1,7 +1,7 @@
 use crate::lib::db::DB;
 use crate::lib::models::*;
 use crate::lib::services::settings::load_settings;
-use crate::lib::utils::{calc_bill_minutes_with_params, validate_open_table_request, validate_close_table_request, today_local, BillingParams, calc_extra_minutes};
+use crate::lib::utils::{calc_bill_minutes_with_params, validate_open_table_request, validate_close_table_request, today_local, BillingParams, calc_extra_minutes, round_to_two};
 use crate::lib::services::settings::get_member_day_discount;
 use crate::lib::services::printer::print_receipt;
 use chrono::{DateTime, Utc};
@@ -634,6 +634,144 @@ pub fn realtime_check(minutes: i32) -> Vec<RealtimeCheckResult> {
         Err(_) => vec![],
     };
     result
+}
+
+/// 统一计费：返回 (总金额, 折扣, 实付净额, bill_minutes)
+fn calc_order_billing(conn: &Connection, order_id: i64, duration: i64, hourly_rate: f64, member_day_discount: i32) -> Result<(f64, f64, f64, i64), String> {
+    let (member_id, package_id, package_price, package_hours): (Option<i64>, Option<i64>, Option<f64>, Option<f64>) = conn
+        .query_row(
+            "SELECT member_id, package_id, package_price, package_hours FROM orders WHERE id = ?1",
+            params![order_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let billing_params = BillingParams::new(5, 30, true);
+    let bill_min = calc_bill_minutes_with_params(duration, &billing_params);
+
+    let mut total = 0.0;
+    if let (Some(_), Some(price), Some(hours)) = (package_id, package_price, package_hours) {
+        total = price;
+        let pkg_duration = (hours * 60.0) as i64;
+        if duration > pkg_duration {
+            let extra_mins = duration - pkg_duration;
+            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+            total += extra_fee;
+        }
+    }
+    if total == 0.0 {
+        total = (bill_min as f64 / 60.0) * hourly_rate;
+    }
+
+    let mut discount = 0.0;
+    if let Some(mid) = member_id {
+        let member_discount: f64 = conn
+            .query_row("SELECT discount FROM members WHERE id = ?1", params![mid], |r| r.get(0))
+            .unwrap_or(1.0);
+        let final_factor = member_discount * (1.0 - (member_day_discount as f64 / 100.0));
+        discount = total * (1.0 - final_factor);
+    }
+
+    let net = (total - discount).max(0.0);
+    Ok((total, discount, net, bill_min))
+}
+
+/// 获取所有活跃订单的实时计费状态（供前端轮询）
+pub fn get_realtime_billing_status() -> Vec<RealtimeBillingStatus> {
+    let member_day_discount = get_member_day_discount();
+    let conn = DB.lock();
+
+    let mut stmt = match conn.prepare(
+        "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, COALESCE(m.name, '散客'),
+                o.start_time, o.deposit, o.package_name, o.package_hours
+         FROM orders o
+         LEFT JOIN tables t ON o.table_id = t.id
+         LEFT JOIN members m ON o.member_id = m.id
+         WHERE o.status = '进行中'"
+    ) {
+        Ok(s) => s,
+        Err(_) => return vec![],
+    };
+
+    let orders: Vec<(i64, i64, String, Option<i64>, String, String, f64, Option<String>, Option<f64>)> =
+        match stmt.query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
+                   row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?))
+        }) {
+            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
+            Err(_) => return vec![],
+        };
+    drop(stmt);
+
+    orders.into_iter().map(|(order_id, table_id, table_name, member_id, member_name,
+                             start_time, deposit, package_name, package_hours)| {
+        let start = DateTime::parse_from_rfc3339(&start_time).ok();
+        let duration = start.map(|s| (chrono::Utc::now() - s.with_timezone(&Utc)).num_minutes().max(1)).unwrap_or(1);
+
+        let hourly_rate: f64 = conn
+            .query_row(
+                "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+                 FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
+                params![table_id],
+                |r| r.get(0),
+            )
+            .unwrap_or(30.0);
+
+        let (current_amount, discount_amount, net_amount, bill_min) =
+            calc_order_billing(&conn, order_id, duration, hourly_rate, member_day_discount)
+                .unwrap_or((0.0, 0.0, 0.0, 0));
+
+        let member_balance: f64 = member_id
+            .and_then(|mid| conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0)).ok())
+            .unwrap_or(0.0);
+
+        let available = deposit + member_balance.max(0.0);
+
+        // 计算剩余可用分钟数
+        let remaining_minutes = if hourly_rate > 0.0 {
+            let remaining = available - net_amount;
+            if remaining <= 0.0 { 0 } else { ((remaining / (hourly_rate / 60.0)) as i64).max(0) }
+        } else { 999 };
+
+        // 套餐剩余分钟数
+        let package_remaining_minutes = if let Some(ph) = package_hours {
+            ((ph * 60.0) as i64 - duration).max(0)
+        } else { -1 };
+
+        // 预警级别
+        let (warning_level, remaining_warning) = if remaining_minutes == 0 {
+            ("exhausted".to_string(), "余额已耗尽".to_string())
+        } else if remaining_minutes <= 5 {
+            ("critical".to_string(), format!("仅剩 {} 分钟", remaining_minutes))
+        } else if remaining_minutes <= 10 {
+            ("low".to_string(), format!("余额不足，约剩 {} 分钟", remaining_minutes))
+        } else {
+            ("normal".to_string(), format!("约剩 {} 分钟", remaining_minutes))
+        };
+
+        RealtimeBillingStatus {
+            order_id,
+            table_id,
+            table_name,
+            member_id,
+            member_name,
+            start_time,
+            duration_minutes: duration,
+            bill_minutes: bill_min,
+            current_amount: round_to_two(current_amount),
+            hourly_rate,
+            package_name,
+            package_remaining_minutes,
+            deposit: round_to_two(deposit),
+            member_balance: round_to_two(member_balance),
+            available: round_to_two(available),
+            remaining_minutes,
+            remaining_warning,
+            warning_level,
+            discount_amount: round_to_two(discount_amount),
+            net_amount: round_to_two(net_amount),
+        }
+    }).collect()
 }
 
 pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
