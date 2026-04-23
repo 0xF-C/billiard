@@ -61,6 +61,51 @@ fn get_order_by_id_locked(conn: &Connection, order_id: i64) -> Result<Order, Str
     ).map_err(|e| e.to_string())
 }
 
+fn get_order_by_id_tx(tx: &rusqlite::Transaction, order_id: i64) -> Result<Order, String> {
+    tx.query_row(
+        "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'), 
+                o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
+                o.total_amount, o.discount_amount, o.deposit, o.change_amount, o.final_amount, o.status,
+                o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
+                o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method
+         FROM orders o 
+         LEFT JOIN tables t ON o.table_id = t.id 
+         LEFT JOIN members m ON o.member_id = m.id 
+         WHERE o.id = ?1",
+        params![order_id],
+        |row| {
+            Ok(Order {
+                id: row.get(0)?,
+                table_id: row.get(1)?,
+                table_name: row.get(2)?,
+                member_id: row.get(3)?,
+                member_name: row.get(4)?,
+                customer_name: row.get(5)?,
+                customer_phone: row.get(6)?,
+                start_time: row.get(7)?,
+                end_time: row.get(8)?,
+                duration_minutes: row.get(9)?,
+                total_amount: row.get(10)?,
+                discount_amount: row.get(11)?,
+                deposit: row.get(12)?,
+                change_amount: row.get(13)?,
+                final_amount: row.get(14)?,
+                status: row.get(15)?,
+                package_id: row.get(16)?,
+                package_name: row.get(17)?,
+                package_price: row.get(18)?,
+                package_hours: row.get(19)?,
+                last_deduction_time: row.get(20)?,
+                cancel_time: row.get(21)?,
+                cancel_reason: row.get(22)?,
+                deposit_refunded: row.get(23)?,
+                refund_method: row.get(24)?,
+                payment_method: row.get(25)?,
+            })
+        },
+    ).map_err(|e| e.to_string())
+}
+
 pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
     validate_open_table_request(&req).map_err(|e| e.to_string())?;
     
@@ -372,6 +417,125 @@ fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableReques
     }
 
     get_order_by_id_locked(conn, order_id)
+}
+
+fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTableRequest, member_day_discount: i32, billing_params: &BillingParams) -> Result<Order, String> {
+
+    let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>) = tx
+        .query_row(
+            "SELECT table_id, member_id, start_time, deposit, package_id, package_price, package_hours FROM orders WHERE id = ?1 AND status = '进行中'",
+            params![order_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
+        )
+        .map_err(|_| "订单不存在或已结账")?;
+
+    let hourly_rate: f64 = tx
+        .query_row(
+            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+             FROM tables t LEFT JOIN areas a ON t.area_id = a.id
+             WHERE t.id = ?1",
+            params![table_id],
+            |r| r.get(0),
+        )
+        .unwrap_or(30.0);
+
+    let start = DateTime::parse_from_rfc3339(&start_time).map_err(|e| format!("时间解析失败: {}", e))?;
+    let now = chrono::Utc::now();
+    let duration = (now - start.with_timezone(&Utc)).num_minutes().max(1);
+    let bill_min = calc_bill_minutes_with_params(duration, &billing_params);
+
+    let mut total = 0.0;
+    if let (Some(_), Some(price), Some(hours)) = (package_id, package_price, package_hours) {
+        total = price;
+        let pkg_duration = (hours * 60.0) as i64;
+        if duration > pkg_duration {
+            let extra_mins = duration - pkg_duration;
+            let extra_fee = calc_extra_minutes(extra_mins, hourly_rate);
+            total += extra_fee;
+        }
+    }
+    if total == 0.0 {
+        total = (bill_min as f64 / 60.0) * hourly_rate;
+    }
+
+    let mut discount = 0.0;
+    let payment_method = req.payment_method.unwrap_or_else(|| "cash".to_string());
+
+    if let Some(mid) = member_id {
+        let member_discount: f64 = tx
+            .query_row(
+                "SELECT discount FROM members WHERE id = ?1",
+                params![mid],
+                |r| r.get(0),
+            )
+            .unwrap_or(1.0);
+
+        let final_factor = member_discount * (1.0 - (member_day_discount as f64 / 100.0));
+        discount = total * (1.0 - final_factor);
+    }
+
+    let final_amount = (total - discount).max(0.0);
+    let change_amount = if deposit > final_amount { deposit - final_amount } else { 0.0 };
+    let net_final = (final_amount - deposit).max(0.0);
+
+    let mut balance_paid = 0.0;
+    if let Some(mid) = member_id {
+        let member_balance: f64 = tx
+            .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
+            .unwrap_or(0.0);
+        balance_paid = member_balance.max(0.0).min(net_final);
+    }
+
+    if balance_paid > 0.0 {
+        if let Some(mid) = member_id {
+            tx.execute(
+                "UPDATE members SET balance = balance - ?1, total_spent = total_spent + ?1 WHERE id = ?2",
+                params![balance_paid, mid],
+            ).map_err(|e| format!("扣减余额失败: {}", e))?;
+            tx.execute(
+                "INSERT INTO balance_logs (member_id, order_id, amount, balance_before, balance_after, reason, payment_method) 
+                 SELECT ?1, ?2, -?3, balance, balance - ?3, 'order', ?4 FROM members WHERE id = ?1",
+                params![mid, order_id, balance_paid, &payment_method],
+            ).ok();
+        }
+    }
+
+    let now_str = now.to_rfc3339();
+    let rows_affected = tx.execute(
+        "UPDATE orders SET end_time = ?1, duration_minutes = ?2, total_amount = ?3, discount_amount = ?4, 
+         change_amount = ?5, final_amount = ?6, payment_method = ?7, status = '已结账' WHERE id = ?8 AND status = '进行中'",
+        params![
+            now_str,
+            duration,
+            total,
+            discount,
+            change_amount,
+            net_final,
+            payment_method,
+            order_id
+        ],
+    ).map_err(|e| e.to_string())?;
+
+    if rows_affected == 0 {
+        return Err("订单已被其他操作处理，请刷新后重试".to_string());
+    }
+
+    tx.execute(
+        "UPDATE tables SET status = '空闲' WHERE id = ?1",
+        params![table_id],
+    ).map_err(|e| e.to_string())?;
+
+    if net_final > 0.0 {
+        let today = today_local();
+        if let Err(e) = tx.execute(
+            "INSERT INTO revenues (type, amount, payment_method, table_id, order_id, member_id, date) VALUES ('order', ?1, ?2, ?3, ?4, ?5, ?6)",
+            params![net_final, payment_method, table_id, order_id, member_id, today],
+        ) {
+            warn!("Failed to record revenue: {}", e);
+        }
+    }
+
+    get_order_by_id_tx(tx, order_id)
 }
 
 pub fn get_orders(status: Option<String>) -> Vec<Order> {
@@ -786,8 +950,13 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
         settings.billing_rules.apply_rounding,
     );
 
-    let conn = DB.lock();
-    let mut stmt = match conn.prepare(
+    let mut conn = DB.lock();
+    let tx = match conn.transaction() {
+        Ok(t) => t,
+        Err(_) => return vec![],
+    };
+
+    let mut stmt = match tx.prepare(
         "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, o.deposit, o.package_id, o.package_price, o.package_hours, o.start_time
          FROM orders o LEFT JOIN tables t ON o.table_id = t.id
          WHERE o.status = '进行中'"
@@ -805,6 +974,8 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
     drop(stmt);
 
     let mut results = vec![];
+    let mut failed_orders = vec![];
+
     for (order_id, table_id, table_name, member_id, deposit, pkg_id, pkg_price, pkg_hours, start_time) in orders {
         let start = match DateTime::parse_from_rfc3339(&start_time) {
             Ok(s) => s,
@@ -812,7 +983,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
         };
         let duration = (chrono::Utc::now() - start.with_timezone(&Utc)).num_minutes();
 
-        let hourly_rate: f64 = conn
+        let hourly_rate: f64 = tx
             .query_row(
                 "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0) FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
                 params![table_id],
@@ -837,7 +1008,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
         let mut available = deposit;
         if let Some(mid) = member_id {
-            let balance: f64 = conn
+            let balance: f64 = tx
                 .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
                 .unwrap_or(0.0);
             available += balance.max(0.0);
@@ -845,7 +1016,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
         if available < total {
             let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-            match close_order_with_conn(&conn, order_id, req, 0, &billing_params) {
+            match close_order_with_tx(&tx, order_id, req, 0, &billing_params) {
                 Ok(_order) => {
                     info!("[AutoClose] Order {} closed: balance/deposit exhausted", order_id);
                     results.push(AutoCloseResult {
@@ -858,10 +1029,23 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
                 }
                 Err(e) => {
                     warn!("[AutoClose] Failed to close order {}: {}", order_id, e);
+                    failed_orders.push(order_id);
                 }
             }
         }
     }
+
+    if !failed_orders.is_empty() {
+        warn!("[AutoClose] Rolling back {} failed orders", failed_orders.len());
+        tx.rollback().ok();
+        return vec![];
+    }
+
+    if let Err(e) = tx.commit() {
+        error!("[AutoClose] Commit failed: {}", e);
+        return vec![];
+    }
+
     results
 }
 
