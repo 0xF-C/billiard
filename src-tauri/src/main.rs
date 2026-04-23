@@ -233,10 +233,12 @@ fn cmd_delete_table_category(token: String, id: i64) -> Result<(), String> {
     delete_table_category(id)
 }
 
+use crate::lib::services::Settings;
+
 // ---- Settings ----
 #[tauri::command(rename_all = "camelCase")]
-fn cmd_get_settings(token: String) -> HashMap<String, serde_json::Value> {
-    if require_auth(&token).is_err() { return HashMap::new(); }
+fn cmd_get_settings(token: String) -> Settings {
+    if require_auth(&token).is_err() { return Settings::default(); }
     get_settings()
 }
 

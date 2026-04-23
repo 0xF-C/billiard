@@ -156,16 +156,15 @@ pub fn get_member_day_discount() -> i32 {
     0
 }
 
-pub fn get_settings() -> HashMap<String, serde_json::Value> {
+pub fn get_settings() -> Settings {
     let conn = DB.lock();
-    let settings = HashMap::new();
     let result: Result<String, _> = conn.query_row("SELECT value FROM settings WHERE key = 'system_settings'", [], |r| r.get(0));
     if let Ok(json) = result {
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json) {
             return serde_json::from_value(parsed).unwrap_or_default();
         }
     }
-    settings
+    Settings::default()
 }
 
 pub fn save_settings(settings: HashMap<String, serde_json::Value>) -> Result<(), String> {
