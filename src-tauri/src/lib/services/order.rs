@@ -810,9 +810,16 @@ pub fn auto_close_expired(order_ids: Vec<i64>) -> Vec<Result<Order, String>> {
 }
 
 pub fn realtime_check(minutes: i32) -> Vec<RealtimeCheckResult> {
+    let settings = load_settings();
+    let member_day_discount = get_member_day_discount();
+    let _billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
     let conn = DB.lock();
     let mut stmt = match conn.prepare(
-        "SELECT o.id, COALESCE(t.name, ''), o.start_time, o.total_amount
+        "SELECT o.id, COALESCE(t.name, ''), o.start_time
          FROM orders o LEFT JOIN tables t ON o.table_id = t.id
          WHERE o.status = '进行中'"
     ) {
@@ -820,15 +827,31 @@ pub fn realtime_check(minutes: i32) -> Vec<RealtimeCheckResult> {
         Err(_) => return vec![],
     };
     let result: Vec<RealtimeCheckResult> = match stmt.query_map([], |row| {
+        let order_id: i64 = row.get(0)?;
         let start_time: String = row.get(2)?;
+        
         let start = DateTime::parse_from_rfc3339(&start_time).ok();
         let duration = if let Some(s) = start { (chrono::Utc::now() - s.with_timezone(&Utc)).num_minutes() } else { 0 };
+        
+        let table_id: i64 = conn.query_row(
+            "SELECT table_id FROM orders WHERE id = ?1", params![order_id], |r| r.get(0)
+        ).unwrap_or(0);
+        
+        let hourly_rate: f64 = conn.query_row(
+            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0) FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
+            params![table_id], |r| r.get(0)
+        ).unwrap_or(30.0);
+        
+        let (current_amount, _, _, _) = calc_order_billing(&conn, order_id, duration.max(1), hourly_rate, member_day_discount)
+            .unwrap_or((0.0, 0.0, 0.0, 0));
+        
         let status = if duration > minutes as i64 { "超时".to_string() } else { "正常".to_string() };
+        
         Ok(RealtimeCheckResult {
-            order_id: row.get(0)?,
+            order_id,
             table_name: row.get(1)?,
             duration_minutes: duration,
-            current_amount: row.get(3)?,
+            current_amount,
             status,
         })
     }) {
