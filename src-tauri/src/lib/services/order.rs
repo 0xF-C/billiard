@@ -848,7 +848,12 @@ fn calc_order_billing(conn: &Connection, order_id: i64, duration: i64, hourly_ra
         )
         .map_err(|e| e.to_string())?;
 
-    let billing_params = BillingParams::new(5, 30, true);
+    let settings = load_settings();
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
     let bill_min = calc_bill_minutes_with_params(duration, &billing_params);
 
     let mut total = 0.0;
@@ -870,7 +875,7 @@ fn calc_order_billing(conn: &Connection, order_id: i64, duration: i64, hourly_ra
         let member_discount: f64 = conn
             .query_row("SELECT discount FROM members WHERE id = ?1", params![mid], |r| r.get(0))
             .unwrap_or(1.0);
-        let final_factor = member_discount * (1.0 - (member_day_discount as f64 / 100.0));
+        let final_factor = (member_discount * (1.0 - (member_day_discount as f64 / 100.0))).max(0.0).min(1.0);
         discount = total * (1.0 - final_factor);
     }
 
