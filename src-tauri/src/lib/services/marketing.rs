@@ -3,7 +3,6 @@
 use crate::lib::db::DB;
 use log::error;
 use rusqlite::params;
-use serde::{Deserialize, Serialize};
 
 // ======== 库存出入库 ========
 
