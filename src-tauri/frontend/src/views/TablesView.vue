@@ -696,8 +696,12 @@ const cfmClose = async () => {
     closeDlg.value = false
     closeForm.value = { payment_method: 'cash' }
     closePaymentMethod.value = 'cash'
-    await loadTables()
+    await Promise.all([loadTables(), refreshMembers()])
   } catch(e) { ElMessage.error(e.response?.data?.error || t('operationFailed')) }
+}
+
+const refreshMembers = async () => {
+  members.value = await getMembers()
 }
 
 const loadTables = async () => {
