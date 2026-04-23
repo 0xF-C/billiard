@@ -68,6 +68,7 @@ pub fn init_database() -> SqliteResult<Connection> {
             total_amount REAL DEFAULT 0.0,
             discount_amount REAL DEFAULT 0.0,
             deposit REAL DEFAULT 0.0,
+            deposit_payment_method TEXT,
             change_amount REAL DEFAULT 0.0,
             final_amount REAL DEFAULT 0.0,
             status TEXT DEFAULT '进行中',
@@ -284,7 +285,7 @@ pub fn init_database() -> SqliteResult<Connection> {
     Ok(conn)
 }
 
-const CURRENT_SCHEMA_VERSION: i32 = 5;
+const CURRENT_SCHEMA_VERSION: i32 = 6;
 
 fn get_current_version(conn: &Connection) -> SqliteResult<i32> {
     let count: i32 = conn.query_row("SELECT COUNT(*) FROM schema_version", [], |r| r.get(0))?;
@@ -529,6 +530,13 @@ fn run_migrations(conn: &Connection) -> SqliteResult<()> {
         conn.execute("ALTER TABLE orders ADD COLUMN deposit_change REAL DEFAULT 0", []).ok();
         
         conn.execute("INSERT INTO schema_version (version) VALUES (5)", []).ok();
+    }
+
+    if current_version < 6 {
+        info!("Running migration v6: add deposit_payment_method column to orders");
+        conn.execute("ALTER TABLE orders ADD COLUMN deposit_payment_method TEXT", []).ok();
+        
+        conn.execute("INSERT INTO schema_version (version) VALUES (6)", []).ok();
     }
 
     if current_version < CURRENT_SCHEMA_VERSION {

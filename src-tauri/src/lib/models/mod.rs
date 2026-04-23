@@ -46,6 +46,7 @@ pub struct Order {
     pub total_amount: f64,
     pub discount_amount: f64,
     pub deposit: f64,
+    pub deposit_payment_method: Option<String>,
     pub change_amount: f64,
     pub final_amount: f64,
     pub status: String,
@@ -142,6 +143,7 @@ pub struct OpenTableRequest {
     pub customer_name: Option<String>,
     pub customer_phone: Option<String>,
     pub deposit: Option<f64>,
+    pub deposit_payment_method: Option<String>,
     pub package_id: Option<i64>,
 }
 
