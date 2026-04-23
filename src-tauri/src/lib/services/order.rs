@@ -643,9 +643,10 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
         settings.billing_rules.billing_interval,
         settings.billing_rules.apply_rounding,
     );
-    let conn = DB.lock();
-
-    let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>) = conn
+    let mut conn = DB.lock();
+    let tx = conn.transaction().map_err(|e| format!("事务创建失败: {}", e))?;
+    
+    let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>) = tx
         .query_row(
             "SELECT table_id, member_id, start_time, deposit, package_id, package_price, package_hours FROM orders WHERE id = ?1 AND status = '进行中'",
             params![order_id],
@@ -653,7 +654,7 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
         )
         .map_err(|_| "订单不存在或状态不允许取消")?;
 
-    let hourly_rate: f64 = conn
+    let hourly_rate: f64 = tx
         .query_row(
             "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
              FROM tables t LEFT JOIN areas a ON t.area_id = a.id
@@ -684,10 +685,10 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
 
     let mut discount = 0.0;
     if let Some(mid) = member_id {
-        let member_discount: f64 = conn
+        let member_discount: f64 = tx
             .query_row("SELECT discount FROM members WHERE id = ?1", params![mid], |r| r.get(0))
             .unwrap_or(1.0);
-        let final_factor = member_discount * (1.0 - (member_day_discount as f64 / 100.0));
+        let final_factor = (member_discount * (1.0 - (member_day_discount as f64 / 100.0))).max(0.0).min(1.0);
         discount = total * (1.0 - final_factor);
     }
 
@@ -696,8 +697,7 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
     let deposit_change = refund_amount;
     let now_str = now.to_rfc3339();
 
-    // Fix #3: Atomic status update - only succeeds if status is still '进行中'
-    let rows_affected = conn.execute(
+    let rows_affected = tx.execute(
         "UPDATE orders SET end_time = ?1, duration_minutes = ?2, total_amount = ?3, discount_amount = ?4,
          final_amount = ?5, cancel_time = ?6, cancel_reason = ?7, deposit_refunded = ?8, deposit_change = ?9,
          refund_method = ?10, status = '已取消' WHERE id = ?11 AND status = '进行中'",
@@ -710,22 +710,22 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
     ).map_err(|e| e.to_string())?;
 
     if rows_affected == 0 {
+        tx.rollback().ok();
         return Err("订单已被其他操作处理，请刷新后重试".to_string());
     }
 
-    conn.execute(
+    tx.execute(
         "UPDATE tables SET status = '空闲' WHERE id = ?1",
         params![table_id],
     ).map_err(|e| e.to_string())?;
 
-    // 散客押金也已记录在 deposit_refunded 字段，会员余额退款单独处理
     if refund_amount > 0.0 {
         if let Some(mid) = member_id {
-            conn.execute(
+            tx.execute(
                 "UPDATE members SET balance = balance + ?1 WHERE id = ?2",
                 params![refund_amount, mid],
-            ).ok();
-            conn.execute(
+            ).map_err(|e| e.to_string())?;
+            tx.execute(
                 "INSERT INTO balance_logs (member_id, amount, balance_before, balance_after, reason)
                  SELECT ?1, ?2, balance, balance + ?2, 'cancel_refund' FROM members WHERE id = ?1",
                 params![mid, refund_amount],
@@ -733,9 +733,9 @@ pub fn cancel_order(order_id: i64, reason: String) -> Result<Order, String> {
         }
     }
 
-    let order = get_order_by_id_locked(&conn, order_id)?;
+    tx.commit().map_err(|e| e.to_string())?;
     drop(conn);
-    Ok(order)
+    Ok(get_order_by_id(order_id)?)
 }
 
 pub fn check_expired_packages() -> Vec<ExpiredOrderInfo> {
@@ -909,15 +909,15 @@ pub fn get_realtime_billing_status() -> Vec<RealtimeBillingStatus> {
                              start_time, deposit, package_name, package_hours)| {
         let start = DateTime::parse_from_rfc3339(&start_time).ok();
         let duration = start.map(|s| (chrono::Utc::now() - s.with_timezone(&Utc)).num_minutes().max(1)).unwrap_or(1);
-
         let hourly_rate: f64 = conn
-            .query_row(
-                "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
-                 FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
-                params![table_id],
-                |r| r.get(0),
-            )
-            .unwrap_or(30.0);
+        .query_row(
+            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+             FROM tables t LEFT JOIN areas a ON t.area_id = a.id
+             WHERE t.id = ?1",
+            params![table_id],
+            |r| r.get(0),
+        )
+        .unwrap_or(30.0);
 
         let (current_amount, discount_amount, net_amount, bill_min) =
             calc_order_billing(&conn, order_id, duration, hourly_rate, member_day_discount)

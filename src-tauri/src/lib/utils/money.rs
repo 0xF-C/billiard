@@ -138,7 +138,6 @@ pub fn calc_bill_minutes_with_params(duration: i64, params: &BillingParams) -> i
     }
     let free = params.free_minutes.max(0) as i64;
     let interval = params.billing_interval.max(1) as i64;
-    let grace = (params.billing_interval.max(1) / 6).max(1) as i64;
     if duration < free {
         return 0;
     }
@@ -146,11 +145,14 @@ pub fn calc_bill_minutes_with_params(duration: i64, params: &BillingParams) -> i
     if billable == 0 {
         return 0;
     }
-    if billable < interval {
+    // 不足一个计费周期按一个周期计费
+    if billable <= interval {
         return free + interval;
     }
     let full_units = billable / interval;
     let rem = billable % interval;
+    // 超过半个周期才追加一个周期
+    let grace = interval / 2;
     let rounded_units = if rem >= grace { full_units + 1 } else { full_units };
     free + rounded_units * interval
 }
