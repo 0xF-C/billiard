@@ -17,7 +17,7 @@ fn map_sale_row(row: &rusqlite::Row) -> rusqlite::Result<Sale> {
 
 pub fn get_sales_records(table_id: Option<i64>, member_id: Option<i64>, days: Option<i32>) -> Vec<Sale> {
     let conn = DB.lock();
-    let days = days.unwrap_or(7);
+    let days = days.unwrap_or(90);
     let shanghai = chrono::Utc::now().with_timezone(&chrono_tz::Asia::Shanghai);
     let start_date = (shanghai - Duration::days(days as i64)).format("%Y-%m-%d").to_string();
     match (table_id, member_id) {

@@ -172,13 +172,9 @@ const getPaymentLabel = (method) => {
 
 const loadRecharges = async () => {
   try {
+    // Pass memberId=0 to get all recharge records across all members
     const logs = await getMemberBalanceLogs(0)
-    const rechargeLogs = (logs || []).filter(log => 
-      log.type === 'recharge' || 
-      (log.description && log.description.includes(t('recharge')))
-    )
-    
-    recharges.value = rechargeLogs.map(log => ({
+    recharges.value = (logs || []).map(log => ({
       ...log,
       member_name: log.member_name || t('unknown'),
       amount: log.amount || 0,

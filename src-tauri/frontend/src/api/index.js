@@ -354,7 +354,7 @@ export const togglePrinter = (id, enabled) =>
   invoke("cmd_toggle_printer", { token: authToken, id, enabled }).catch((err) => handleError(err, "切换打印机"));
 
 export const printReceipt = (data) =>
-  invoke("cmd_print_receipt", { token: authToken, data }).catch((err) => handleError(err, "打印小票"));
+  invoke("cmd_print_receipt", { token: authToken, req: { shop_name: '台球厅', ...data } }).catch((err) => handleError(err, "打印小票"));
 
 export const testPrinter = (id) =>
   invoke("cmd_test_printer", { token: authToken, id }).catch((err) => handleError(err, "测试打印机"));

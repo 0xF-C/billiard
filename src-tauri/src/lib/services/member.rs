@@ -140,11 +140,36 @@ pub fn update_member_level(name: &str, discount: f64) -> Result<MemberLevel, Str
 
 pub fn get_member_balance_logs(member_id: i64) -> Vec<serde_json::Value> {
     let conn = DB.lock();
-    let mut stmt = match conn.prepare("SELECT id, member_id, amount, balance_before, balance_after, reason, order_id, operator, payment_method, created_at FROM balance_logs WHERE member_id = ?1 ORDER BY id DESC LIMIT 100") {
-        Ok(s) => s, Err(e) => { error!("Failed to prepare balance logs query: {}", e); return vec![]; }
+    // member_id=0 means query all recharge records across all members
+    let sql = if member_id == 0 {
+        "SELECT bl.id, bl.member_id, COALESCE(m.name, '') as member_name, bl.amount, bl.balance_before, bl.balance_after, bl.reason, bl.order_id, bl.operator, bl.payment_method, bl.created_at \
+         FROM balance_logs bl LEFT JOIN members m ON bl.member_id = m.id \
+         WHERE bl.reason = 'recharge' ORDER BY bl.id DESC LIMIT 500"
+    } else {
+        "SELECT bl.id, bl.member_id, COALESCE(m.name, '') as member_name, bl.amount, bl.balance_before, bl.balance_after, bl.reason, bl.order_id, bl.operator, bl.payment_method, bl.created_at \
+         FROM balance_logs bl LEFT JOIN members m ON bl.member_id = m.id \
+         WHERE bl.member_id = ?1 ORDER BY bl.id DESC LIMIT 100"
     };
-    let result: Vec<serde_json::Value> = match stmt.query_map(params![member_id], |row| {
-        Ok(serde_json::json!({ "id": row.get::<_, i64>(0)?, "member_id": row.get::<_, i64>(1)?, "amount": row.get::<_, f64>(2)?, "balance_before": row.get::<_, f64>(3)?, "balance_after": row.get::<_, f64>(4)?, "reason": row.get::<_, String>(5)?, "order_id": row.get::<_, Option<i64>>(6)?, "operator": row.get::<_, String>(7)?, "payment_method": row.get::<_, String>(8)?, "created_at": row.get::<_, String>(9)? }))
-    }) { Ok(iter) => iter.filter_map(|r| r.ok()).collect(), Err(e) => { error!("Failed to query balance logs: {}", e); vec![] } };
-    result
+    let build_row = |row: &rusqlite::Row| {
+        Ok(serde_json::json!({
+            "id": row.get::<_, i64>(0)?,
+            "member_id": row.get::<_, i64>(1)?,
+            "member_name": row.get::<_, String>(2)?,
+            "amount": row.get::<_, f64>(3)?,
+            "balance_before": row.get::<_, f64>(4)?,
+            "balance_after": row.get::<_, f64>(5)?,
+            "reason": row.get::<_, String>(6)?,
+            "order_id": row.get::<_, Option<i64>>(7)?,
+            "operator": row.get::<_, String>(8)?,
+            "payment_method": row.get::<_, String>(9)?,
+            "created_at": row.get::<_, String>(10)?
+        }))
+    };
+    if member_id == 0 {
+        let mut stmt = match conn.prepare(sql) { Ok(s) => s, Err(e) => { error!("Failed to prepare recharge logs query: {}", e); return vec![]; } };
+        match stmt.query_map([], build_row) { Ok(iter) => iter.filter_map(|r| r.ok()).collect(), Err(e) => { error!("Failed to query recharge logs: {}", e); vec![] } }
+    } else {
+        let mut stmt = match conn.prepare(sql) { Ok(s) => s, Err(e) => { error!("Failed to prepare balance logs query: {}", e); return vec![]; } };
+        match stmt.query_map(params![member_id], build_row) { Ok(iter) => iter.filter_map(|r| r.ok()).collect(), Err(e) => { error!("Failed to query balance logs: {}", e); vec![] } }
+    }
 }

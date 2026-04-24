@@ -785,6 +785,9 @@ const load = async () => {
     members.value = await getMembers()
     const settings = await getSettings()
     packages.value = settings.packages || []
+    if (settings.shopName) {
+      shopName.value = settings.shopName
+    }
     if (settings.autoClose) {
       autoCloseEnabled.value = settings.autoClose.enabled
       if (settings.autoClose.intervalMinutes) {

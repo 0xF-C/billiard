@@ -253,7 +253,7 @@ const loadOrders = async () => {
   try {
     orders.value = curTab.value === 'active'
       ? await getActiveOrders()
-      : await getOrders({ status: '已完成' })
+      : await getOrders('已完成')
   } catch { ElMessage.error(t('loadFailed')) }
   loading.value = false
 }
