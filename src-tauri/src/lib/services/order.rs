@@ -1091,10 +1091,11 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
         // 每张桌独立事务关台，互不影响
         let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-        let close_result = {
+        let close_result: Result<Order, String> = {
             let mut conn = DB.lock();
-            match conn.transaction() {
-                Ok(tx) => {
+            conn.transaction()
+                .map_err(|e| format!("tx failed: {}", e))
+                .and_then(|tx| {
                     let r = close_order_with_tx(&tx, order_id, req, cur_member_day_discount, &billing_params);
                     match r {
                         Ok(order) => {
@@ -1110,9 +1111,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
                             Err(e)
                         }
                     }
-                }
-                Err(e) => Err(format!("tx failed: {}", e)),
-            }
+                })
         };
 
         match close_result {
@@ -1379,10 +1378,11 @@ pub fn process_billing_ticks() -> Vec<BillingTickResult> {
 
             // 触发关台
             let close_req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-            let close_result = {
+            let close_result: Result<Order, String> = {
                 let mut conn = DB.lock();
-                match conn.transaction() {
-                    Ok(tx) => {
+                conn.transaction()
+                    .map_err(|e| e.to_string())
+                    .and_then(|tx| {
                         match close_order_with_tx(&tx, order_id, close_req, member_day_discount, &billing_params) {
                             Ok(order) => {
                                 if tx.commit().is_ok() {
@@ -1393,9 +1393,7 @@ pub fn process_billing_ticks() -> Vec<BillingTickResult> {
                             }
                             Err(e) => { tx.rollback().ok(); Err(e) }
                         }
-                    }
-                    Err(e) => Err(e.to_string()),
-                }
+                    })
             };
 
             match close_result {
