@@ -181,7 +181,6 @@ const navModules = [
   {
     id: 'front', titleKey: 'nav_front', icon: Grid,
     children: [
-      { path: '/tables', titleKey: 'sub_table_manage' },
       { path: '/table-overview', titleKey: 'sub_realtime_tables' },
       { path: '/products', titleKey: 'sub_goods_consume' },
       { path: '/finance', titleKey: 'sub_checkout' },
