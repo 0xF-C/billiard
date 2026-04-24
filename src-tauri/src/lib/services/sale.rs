@@ -1,6 +1,8 @@
 use crate::lib::db::DB;
 use crate::lib::models::*;
 use crate::lib::utils::{round_to_two, validate_positive_id, validate_quantity, today_local};
+use crate::lib::services::printer::print_receipt;
+use crate::lib::services::settings::load_settings;
 use chrono::Duration;
 use rusqlite::params;
 
@@ -174,5 +176,45 @@ pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
     
     tx.commit().map_err(|e| e.to_string())?;
 
+    // Auto-print sale receipt (mirrors close_order print logic)
+    let sales_snapshot = sales.clone();
+    let pm_snapshot = pm.clone();
+    let table_name_snapshot = table_name.clone();
+    let member_name_snapshot = member_name.clone();
+    std::thread::spawn(move || {
+        auto_print_sale_receipt(sales_snapshot, &pm_snapshot, table_name_snapshot.as_deref(), member_name_snapshot.as_deref());
+    });
+
     Ok(sales)
+}
+
+fn auto_print_sale_receipt(sales: Vec<Sale>, payment_method: &str, table_name: Option<&str>, member_name: Option<&str>) {
+    let settings = load_settings();
+    if !settings.auto_print_on_sale.unwrap_or(true) {
+        return;
+    }
+    let total: f64 = sales.iter().map(|s| s.total_amount).sum();
+    let items: Vec<ReceiptItem> = sales.iter().map(|s| ReceiptItem {
+        name: s.product_name.clone(),
+        quantity: s.quantity,
+        price: s.unit_price,
+    }).collect();
+    let req = PrintReceiptRequest {
+        printer_id: None,
+        shop_name: settings.shop_name.clone().unwrap_or_else(|| "台球厅".to_string()),
+        order_no: None,
+        table_name: table_name.map(|s| s.to_string()),
+        member_name: member_name.map(|s| s.to_string()),
+        start_time: None,
+        end_time: Some(chrono::Utc::now().to_rfc3339()),
+        duration_minutes: None,
+        items: Some(items),
+        total_amount: total,
+        discount_amount: None,
+        deposit: None,
+        final_amount: total,
+        payment_method: Some(payment_method.to_string()),
+        receipt_type: "sale".to_string(),
+    };
+    let _ = print_receipt(req);
 }

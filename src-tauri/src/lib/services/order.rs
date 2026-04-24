@@ -1039,6 +1039,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
     let mut results = vec![];
     let mut failed_orders = vec![];
+    let mut closed_orders_for_print: Vec<Order> = vec![];
 
     for (order_id, table_id, table_name, member_id, deposit, pkg_id, pkg_price, pkg_hours, start_time) in orders {
         let start = match DateTime::parse_from_rfc3339(&start_time) {
@@ -1073,6 +1074,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
         let mut available = deposit;
         let mut discount = 0.0;
+        let cur_member_day_discount = get_member_day_discount();
         if let Some(mid) = member_id {
             let member_discount: f64 = tx
                 .query_row(
@@ -1081,8 +1083,9 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
                     |r| r.get(0),
                 )
                 .unwrap_or(1.0);
-            let member_day_discount = get_member_day_discount();
-            let final_factor = (member_discount * (1.0 - (member_day_discount as f64 / 100.0))).max(0.0).min(1.0);
+            let effective_member_discount = member_discount.clamp(0.05, 1.0);
+            let member_day_factor = 1.0 - (cur_member_day_discount as f64 / 100.0);
+            let final_factor = effective_member_discount.min(member_day_factor).max(0.05).min(1.0);
             discount = total * (1.0 - final_factor);
             let balance: f64 = tx
                 .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
@@ -1094,8 +1097,8 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
         if available < final_total {
             let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-            match close_order_with_tx(&tx, order_id, req, 0, &billing_params) {
-                Ok(_order) => {
+            match close_order_with_tx(&tx, order_id, req, cur_member_day_discount, &billing_params) {
+                Ok(order) => {
                     info!("[AutoClose] Order {} closed: balance/deposit exhausted", order_id);
                     results.push(AutoCloseResult {
                         order_id,
@@ -1104,6 +1107,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
                         total_amount: final_total,
                         available_amount: available,
                     });
+                    closed_orders_for_print.push(order);
                 }
                 Err(e) => {
                     warn!("[AutoClose] Failed to close order {}: {}", order_id, e);
@@ -1122,6 +1126,15 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
     if let Err(e) = tx.commit() {
         error!("[AutoClose] Commit failed: {}", e);
         return vec![];
+    }
+
+    // Auto-print receipts for all auto-closed orders (non-blocking)
+    for order in closed_orders_for_print {
+        std::thread::spawn(move || {
+            if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| auto_print_receipt(&order))) {
+                error!("Auto-print panic for auto-close order {}: {:?}", order.id, e);
+            }
+        });
     }
 
     results

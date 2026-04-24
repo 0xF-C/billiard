@@ -130,7 +130,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete, Search, Goods, ShoppingCart, Check, Minus, Document, Refresh, Box } from '@element-plus/icons-vue'
-import { getInventory, getInventoryCategories, saleBatch, getSalesRecords } from '../api'
+import { getInventory, getInventoryCategories, saleBatch, getSalesRecords, printReceipt as apiPrintReceipt } from '../api'
 import { t } from '../i18n'
 
 const products = ref([])
@@ -217,7 +217,7 @@ const doCheckout = async () => {
   if (cart.value.length === 0) return
   submitting.value = true
   try {
-    await saleBatch({
+    const sales = await saleBatch({
       items: cart.value.map(item => ({
         product_id: item.id,
         quantity: item.quantity
@@ -225,6 +225,17 @@ const doCheckout = async () => {
       payment_method: paymentMethod.value
     })
     ElMessage.success(t('saveSuccess'))
+    // Auto-print sale receipt (mirrors close-table logic)
+    try {
+      const total = sales.reduce((sum, s) => sum + (s.total_amount || 0), 0)
+      await apiPrintReceipt({
+        receipt_type: 'sale',
+        total_amount: total,
+        final_amount: total,
+        payment_method: paymentMethod.value,
+        items: sales.map(s => ({ name: s.product_name, quantity: s.quantity, price: s.unit_price }))
+      })
+    } catch (_) { /* print failure is non-fatal */ }
     cart.value = []
     await loadProducts()
   } catch(e) {

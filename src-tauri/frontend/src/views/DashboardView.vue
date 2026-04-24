@@ -801,7 +801,7 @@ const load = async () => {
 const quickSale = async (prod) => {
   if (prod.stock <= 0) return ElMessage.warning(t('lowStock'))
   try {
-    await saleBatch({
+    const sales = await saleBatch({
       items: [{
         product_id: prod.id,
         quantity: 1
@@ -810,6 +810,17 @@ const quickSale = async (prod) => {
     })
     ElMessage.success(t('saveSuccess'))
     prod.stock--
+    // Auto-print sale receipt (mirrors close-table logic)
+    try {
+      const total = sales.reduce((sum, s) => sum + (s.total_amount || 0), 0)
+      await apiPrintReceipt({
+        receipt_type: 'sale',
+        total_amount: total,
+        final_amount: total,
+        payment_method: 'cash',
+        items: sales.map(s => ({ name: s.product_name, quantity: s.quantity, price: s.unit_price }))
+      })
+    } catch (_) { /* print failure is non-fatal */ }
   } catch(e) {
     ElMessage.error(e.response?.data?.error || t('operationFailed'))
   }
