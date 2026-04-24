@@ -250,8 +250,6 @@ import { getSettings, saveSettings, getPrinters, createPrinter as apiCreatePrint
 
 const curLang = ref(currentLang.value)
 const showPrinterDlg = ref(false)
-const showUserDlg = ref(false)
-const showBackupDlg = ref(false)
 const showPrinterForm = ref(false)
 const showPrintTemplateDlg = ref(false)
 const editPrinterTarget = ref(null)
