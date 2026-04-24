@@ -40,7 +40,7 @@
       <div class="card tables-overview">
         <div class="card-header">
           <span class="card-title">{{ t('tables') }} {{ t('areaOverview') }}</span>
-          <router-link to="/tables" class="card-link">{{ t('viewAll') }}</router-link>
+          <router-link to="/table-overview" class="card-link">{{ t('viewAll') }}</router-link>
         </div>
         <div class="area-groups">
           <div v-for="group in groupedTables" :key="group.areaId" class="area-group">
