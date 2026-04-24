@@ -73,6 +73,7 @@ fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String>
 
     let width = BITMAP_WIDTH;
     let font_size = 22.0;
+    let scale = PxScale::from(font_size);
     let line_height = 34u32;
     let margin = 10u32;
 
