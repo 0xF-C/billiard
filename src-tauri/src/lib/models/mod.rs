@@ -137,6 +137,7 @@ pub struct DashboardStats {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenTableRequest {
     pub table_id: i64,
     pub member_id: Option<i64>,
@@ -148,6 +149,7 @@ pub struct OpenTableRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CloseTableRequest {
     pub payment_method: Option<String>,
     pub discount_amount: Option<f64>,

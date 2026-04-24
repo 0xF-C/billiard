@@ -365,11 +365,11 @@ const handleConfirm = async () => {
     }
 
     await openTable({
-      table_id: props.table.id,
-      member_id: memberId,
-      package_id: selectedPackage.value?.id || null,
-      customer_name: walkinForm.value.name || null,
-      customer_phone: walkinForm.value.phone || null,
+      tableId: props.table.id,
+      memberId: memberId,
+      packageId: selectedPackage.value?.id || null,
+      customerName: walkinForm.value.name || null,
+      customerPhone: walkinForm.value.phone || null,
       deposit: deposit
     })
 

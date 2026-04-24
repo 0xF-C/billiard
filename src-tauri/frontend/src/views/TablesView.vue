@@ -569,6 +569,15 @@ const calcBillMinutes = (duration, rules) => {
   return free + roundedUnits * interval
 }
 
+const doOpen = (item) => {
+  sel.value = item
+  selectedMember.value = null
+  selectedPackage.value = null
+  customerType.value = 'walkin'
+  walkinForm.value = { name: '', phone: '', useDeposit: false, deposit: 100, payment_method: 'cash' }
+  openDlg.value = true
+}
+
 const doClose = async (item) => {
   try {
     preview.value = await getOrderByTable(item.id)
@@ -663,11 +672,11 @@ const cfmOpen = async () => {
     }
 
     await openTable({
-      table_id: sel.value.id,
-      member_id: memberId,
-      package_id: selectedPackage.value?.id || null,
-      customer_name: walkinForm.value.name || null,
-      customer_phone: walkinForm.value.phone || null,
+      tableId: sel.value.id,
+      memberId: memberId,
+      packageId: selectedPackage.value?.id || null,
+      customerName: walkinForm.value.name || null,
+      customerPhone: walkinForm.value.phone || null,
       deposit: deposit
     })
 
@@ -691,7 +700,7 @@ const cfmOpen = async () => {
 
 const cfmClose = async () => {
   try {
-    await closeTable(preview.value.id, { payment_method: closePaymentMethod.value })
+    await closeTable(preview.value.id, { paymentMethod: closePaymentMethod.value })
     ElMessage.success({ message: `${t('closeSuccess')}！¥${pay.value.final.toFixed(2)}`, grouping: true })
     closeDlg.value = false
     closeForm.value = { payment_method: 'cash' }
