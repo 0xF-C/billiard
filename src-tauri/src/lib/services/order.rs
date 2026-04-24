@@ -160,6 +160,22 @@ pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
                     tx.rollback().ok();
                     return Err(format!("套餐价格 ¥{:.2}，会员余额不足", price));
                 }
+                // P3 #20 修复: 检查套餐价格是否低于预估消费，提醒用户
+                if let Some(hours) = package_hours {
+                    let hourly_rate: f64 = tx
+                        .query_row(
+                            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+                             FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
+                            params![req.table_id],
+                            |r| r.get(0),
+                        )
+                        .unwrap_or(30.0);
+                    let estimated = hours * hourly_rate;
+                    if price < estimated {
+                        // 只记录日志，不阻止开台
+                        log::info!("套餐价格 ¥{:.2} 低于预估消费 ¥{:.2}", price, estimated);
+                    }
+                }
             } else {
                 // 非套餐模式: 检查余额 + 押金是否足够支付最低消费预估
                 let min_hours: i32 = tx
