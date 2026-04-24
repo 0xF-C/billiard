@@ -9,7 +9,7 @@
     <div class="settings-section">
       <h3 class="section-title">{{ t('userManagement') }}</h3>
       <div class="user-toolbar">
-        <el-button type="primary" size="small" @click="showAddUser">
+        <el-button type="primary" size="small" @click="openAddUser">
           <el-icon><Plus /></el-icon>
           {{ t('add') }}
         </el-button>
@@ -118,7 +118,6 @@ import { t } from '../i18n'
 import { getUsers, createUser, updateUser, deleteUser as delUser } from '../api'
 
 const showAddRole = ref(false)
-const showAddUser = ref(false)
 const showUserForm = ref(false)
 const editUserTarget = ref(null)
 const users = ref([])
@@ -182,7 +181,7 @@ const loadUsers = async () => {
   }
 }
 
-const showAddUser = () => {
+const openAddUser = () => {
   editUserTarget.value = null
   userForm.username = ''
   userForm.password = ''
