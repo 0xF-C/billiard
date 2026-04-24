@@ -850,16 +850,28 @@ const checkExpiredOrders = async () => {
   }
 }
 
-onMounted(() => {
-    load()
-    timer = setInterval(load, 60000)
-    realtimeTimer = setInterval(async () => {
-      try { await realtimeCheck(30) } catch {}
-      if (autoCloseEnabled.value) {
-        try { const closed = await autoCloseExhausted(); if (closed && closed.length > 0) { ElMessage.warning(`余额不足自动关台: ${closed.length} 桌`); load(); } } catch {}
-      }
-    }, autoCloseInterval.value * 60 * 1000)
-  })
+const startRealtimeTimer = () => {
+  clearInterval(realtimeTimer)
+  const intervalMs = (autoCloseInterval.value || 10) * 60 * 1000
+  realtimeTimer = setInterval(async () => {
+    try { await realtimeCheck(30) } catch {}
+    if (autoCloseEnabled.value) {
+      try {
+        const closed = await autoCloseExhausted()
+        if (closed && closed.length > 0) {
+          ElMessage.warning(`余额不足自动关台: ${closed.length} 桌`)
+          load()
+        }
+      } catch {}
+    }
+  }, intervalMs)
+}
+
+onMounted(async () => {
+  await load()
+  timer = setInterval(load, 60000)
+  startRealtimeTimer()
+})
 onUnmounted(() => { clearInterval(timer); clearInterval(realtimeTimer) })
 </script>
 

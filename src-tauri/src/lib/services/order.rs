@@ -860,7 +860,8 @@ fn calc_order_billing(conn: &Connection, order_id: i64, duration: i64, hourly_ra
 fn calc_order_billing_simple(
     duration: i64,
     hourly_rate: f64,
-    _member_day_discount: i32,
+    member_day_discount: i32,
+    member_discount: f64,
     package_id: Option<i64>,
     package_price: Option<f64>,
     package_hours: Option<f64>,
@@ -888,9 +889,16 @@ fn calc_order_billing_simple(
         total = (bill_min as f64 / 60.0) * hourly_rate;
     }
 
-    // 实时计费不查折扣（简化计算）
-    let discount = 0.0;
-    let net = total;
+    // 计算会员折扣（与 close_order_with_tx 保持一致）
+    let discount = if member_discount < 1.0 {
+        let effective = member_discount.clamp(0.05, 1.0);
+        let day_factor = 1.0 - (member_day_discount as f64 / 100.0);
+        let final_factor = effective.min(day_factor).max(0.05).min(1.0);
+        total * (1.0 - final_factor)
+    } else {
+        0.0
+    };
+    let net = (total - discount).max(0.0);
 
     Ok((total, discount, net, bill_min))
 }
@@ -903,6 +911,7 @@ pub fn get_realtime_billing_status() -> Vec<RealtimeBillingStatus> {
     // 预取所有活跃订单和费率信息（单次查询减少锁持有时间）
     let orders_data: Vec<(i64, i64, String, Option<i64>, String, String, f64, Option<String>, Option<f64>, Option<i64>, Option<f64>, f64)>;
     let mut member_balances: std::collections::HashMap<i64, f64>;
+    let mut member_discounts: std::collections::HashMap<i64, f64>;
     
     {
         let conn = DB.lock();
@@ -929,28 +938,33 @@ pub fn get_realtime_billing_status() -> Vec<RealtimeBillingStatus> {
                 Err(_) => return vec![],
             };
         
-        // 预取所有会员余额
+        // 预取所有会员余额和折扣
         member_balances = std::collections::HashMap::new();
+        member_discounts = std::collections::HashMap::new();
         let member_ids: Vec<i64> = orders_data.iter().filter_map(|(_, _, _, mid, _, _, _, _, _, _, _, _)| *mid).collect();
         for mid in member_ids {
             if !member_balances.contains_key(&mid) {
                 if let Ok(balance) = conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get::<_, f64>(0)) {
                     member_balances.insert(mid, balance);
                 }
+                if let Ok(disc) = conn.query_row("SELECT discount FROM members WHERE id = ?1", params![mid], |r| r.get::<_, f64>(0)) {
+                    member_discounts.insert(mid, disc);
+                }
             }
         }
     } // 锁在这里释放
-    
+
     // 在锁外计算（减少锁持有时间）
     orders_data.into_iter().map(|(order_id, table_id, table_name, member_id, member_name,
                              start_time, deposit, package_name, package_hours, package_id, package_price, hourly_rate)| {
         let start = DateTime::parse_from_rfc3339(&start_time).ok();
         let duration = start.map(|s| (chrono::Utc::now() - s.with_timezone(&Utc)).num_minutes().max(1)).unwrap_or(1);
-        
+
+        let member_discount_val = member_id.and_then(|mid| member_discounts.get(&mid)).copied().unwrap_or(1.0);
         let (current_amount, discount_amount, net_amount, bill_min) =
-            calc_order_billing_simple(duration, hourly_rate, member_day_discount, package_id, package_price, package_hours)
+            calc_order_billing_simple(duration, hourly_rate, member_day_discount, member_discount_val, package_id, package_price, package_hours)
                 .unwrap_or((0.0, 0.0, 0.0, 0));
-        
+
         let member_balance = member_id.and_then(|mid| member_balances.get(&mid)).copied().unwrap_or(0.0);
         
         let available = deposit + member_balance.max(0.0);
@@ -1013,32 +1027,30 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
         settings.billing_rules.billing_interval,
         settings.billing_rules.apply_rounding,
     );
+    let cur_member_day_discount = get_member_day_discount();
 
-    let mut conn = DB.lock();
-    let tx = match conn.transaction() {
-        Ok(t) => t,
-        Err(_) => return vec![],
+    // 预先获取所有活跃订单（只读查询，不需要事务）
+    let orders: Vec<(i64, i64, String, Option<i64>, f64, Option<i64>, Option<f64>, Option<f64>, String)> = {
+        let conn = DB.lock();
+        let mut stmt = match conn.prepare(
+            "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, o.deposit,
+                    o.package_id, o.package_price, o.package_hours, o.start_time
+             FROM orders o LEFT JOIN tables t ON o.table_id = t.id
+             WHERE o.status = '进行中'"
+        ) {
+            Ok(s) => s,
+            Err(_) => return vec![],
+        };
+        match stmt.query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
+                row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?))
+        }) {
+            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
+            Err(_) => return vec![],
+        }
     };
-
-    let mut stmt = match tx.prepare(
-        "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, o.deposit, o.package_id, o.package_price, o.package_hours, o.start_time
-         FROM orders o LEFT JOIN tables t ON o.table_id = t.id
-         WHERE o.status = '进行中'"
-    ) {
-        Ok(s) => s,
-        Err(_) => return vec![],
-    };
-
-    let orders: Vec<(i64, i64, String, Option<i64>, f64, Option<i64>, Option<f64>, Option<f64>, String)> = match stmt.query_map([], |row| {
-        Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?))
-    }) {
-        Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
-        Err(_) => return vec![],
-    };
-    drop(stmt);
 
     let mut results = vec![];
-    let mut failed_orders = vec![];
     let mut closed_orders_for_print: Vec<Order> = vec![];
 
     for (order_id, table_id, table_name, member_id, deposit, pkg_id, pkg_price, pkg_hours, start_time) in orders {
@@ -1048,13 +1060,23 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
         };
         let duration = (chrono::Utc::now() - start.with_timezone(&Utc)).num_minutes().max(1);
 
-        let hourly_rate: f64 = tx
-            .query_row(
-                "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0) FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
-                params![table_id],
-                |r| r.get(0),
-            )
-            .unwrap_or(30.0);
+        // 每张桌独立查询当前费率和余额（锁外）
+        let (hourly_rate, member_discount_val, member_balance) = {
+            let conn = DB.lock();
+            let rate: f64 = conn.query_row(
+                "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+                 FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
+                params![table_id], |r| r.get(0),
+            ).unwrap_or(30.0);
+            let (disc, bal) = if let Some(mid) = member_id {
+                let d: f64 = conn.query_row("SELECT discount FROM members WHERE id = ?1", params![mid], |r| r.get(0)).unwrap_or(1.0);
+                let b: f64 = conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0)).unwrap_or(0.0);
+                (d, b)
+            } else {
+                (1.0, 0.0)
+            };
+            (rate, disc, bal)
+        };
 
         let mut total = 0.0;
         if let (Some(_), Some(price), Some(hours)) = (pkg_id, pkg_price, pkg_hours) {
@@ -1063,7 +1085,7 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
             if duration > pkg_duration {
                 let extra_mins = duration - pkg_duration;
                 let extra_params = BillingParams::new(0, billing_params.billing_interval, billing_params.apply_rounding);
-            let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &extra_params);
+                let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &extra_params);
                 total += extra_fee;
             }
         }
@@ -1074,58 +1096,62 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
 
         let mut available = deposit;
         let mut discount = 0.0;
-        let cur_member_day_discount = get_member_day_discount();
-        if let Some(mid) = member_id {
-            let member_discount: f64 = tx
-                .query_row(
-                    "SELECT discount FROM members WHERE id = ?1",
-                    params![mid],
-                    |r| r.get(0),
-                )
-                .unwrap_or(1.0);
-            let effective_member_discount = member_discount.clamp(0.05, 1.0);
+        if member_id.is_some() {
+            let effective_member_discount = member_discount_val.clamp(0.05, 1.0);
             let member_day_factor = 1.0 - (cur_member_day_discount as f64 / 100.0);
             let final_factor = effective_member_discount.min(member_day_factor).max(0.05).min(1.0);
             discount = total * (1.0 - final_factor);
-            let balance: f64 = tx
-                .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
-                .unwrap_or(0.0);
-            available += balance.max(0.0);
+            available += member_balance.max(0.0);
         }
 
         let final_total = (total - discount).max(0.0);
 
-        if available < final_total {
-            let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-            match close_order_with_tx(&tx, order_id, req, cur_member_day_discount, &billing_params) {
-                Ok(order) => {
-                    info!("[AutoClose] Order {} closed: balance/deposit exhausted", order_id);
-                    results.push(AutoCloseResult {
-                        order_id,
-                        table_name,
-                        reason: "余额/押金不足".to_string(),
-                        total_amount: final_total,
-                        available_amount: available,
-                    });
-                    closed_orders_for_print.push(order);
+        if available >= final_total {
+            continue;
+        }
+
+        // 每张桌独立事务关台，互不影响
+        let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
+        let close_result = {
+            let mut conn = DB.lock();
+            match conn.transaction() {
+                Ok(tx) => {
+                    let r = close_order_with_tx(&tx, order_id, req, cur_member_day_discount, &billing_params);
+                    match r {
+                        Ok(order) => {
+                            if let Err(e) = tx.commit() {
+                                error!("[AutoClose] Commit failed for order {}: {}", order_id, e);
+                                Err(format!("commit failed: {}", e))
+                            } else {
+                                Ok(order)
+                            }
+                        }
+                        Err(e) => {
+                            tx.rollback().ok();
+                            Err(e)
+                        }
+                    }
                 }
-                Err(e) => {
-                    warn!("[AutoClose] Failed to close order {}: {}", order_id, e);
-                    failed_orders.push(order_id);
-                }
+                Err(e) => Err(format!("tx failed: {}", e)),
+            }
+        };
+
+        match close_result {
+            Ok(order) => {
+                info!("[AutoClose] Order {} closed: balance/deposit exhausted (available={:.2}, final={:.2})", order_id, available, final_total);
+                results.push(AutoCloseResult {
+                    order_id,
+                    table_name,
+                    reason: "余额/押金不足".to_string(),
+                    total_amount: final_total,
+                    available_amount: available,
+                });
+                closed_orders_for_print.push(order);
+            }
+            Err(e) => {
+                warn!("[AutoClose] Failed to close order {}: {}", order_id, e);
             }
         }
-    }
-
-    if !failed_orders.is_empty() {
-        warn!("[AutoClose] Rolling back {} failed orders", failed_orders.len());
-        tx.rollback().ok();
-        return vec![];
-    }
-
-    if let Err(e) = tx.commit() {
-        error!("[AutoClose] Commit failed: {}", e);
-        return vec![];
     }
 
     // Auto-print receipts for all auto-closed orders (non-blocking)
