@@ -14,6 +14,24 @@ pub fn get_bookings(status: Option<String>) -> Vec<Booking> {
 
 pub fn create_booking(req: CreateBookingRequest) -> Result<Booking, String> {
     let conn = DB.lock();
+    // P2 #9 修复: 插入前检查同桌同时段是否已有预订（时间冲突检测）
+    let booking_time = &req.booking_time;
+    let duration_hours = req.duration_hours.unwrap_or(2.0);
+    
+    // 查询冲突的预订：(booking_time, booking_time + duration) 区间内已有的预订
+    // 使用 SQL 的 datetime() 函数计算结束时间
+    let conflict_count: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM bookings WHERE table_id = ?1 AND status != 'cancelled' 
+         AND booking_time < datetime(?2, '+' || ?3 || ' hours') 
+         AND datetime(booking_time, '+' || duration_hours || ' hours') > ?2",
+        params![req.table_id, booking_time, duration_hours],
+        |r| r.get(0),
+    ).unwrap_or(0);
+    
+    if conflict_count > 0 {
+        return Err("该时段该桌已被预订".to_string());
+    }
+    
     conn.execute("INSERT INTO bookings (customer_name, customer_phone, table_id, booking_time, duration_hours, status, remark) VALUES (?1, ?2, ?3, ?4, ?5, 'pending', ?6)", params![req.customer_name, req.customer_phone, req.table_id, req.booking_time, req.duration_hours.unwrap_or(2.0), req.remark]).map_err(|e| e.to_string())?;
     let id = conn.last_insert_rowid();
     let table_name: Option<String> = if let Some(tid) = req.table_id { conn.query_row("SELECT name FROM tables WHERE id = ?1", params![tid], |r| r.get(0)).ok() } else { None };

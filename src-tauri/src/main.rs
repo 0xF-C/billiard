@@ -650,12 +650,15 @@ fn cmd_list_usb_printers() -> Vec<String> {
 // ======== 库存出入库 ========
 #[tauri::command]
 fn cmd_get_stock_io_records(token: String, product_id: Option<i64>, io_type: Option<String>, days: Option<i32>) -> Vec<serde_json::Value> {
-    verify_token(&token);
+    // P2 #13 修复: 添加 require_auth 检查
+    if require_auth(&token).is_err() { return vec![]; }
     get_stock_io_records(product_id, io_type, days)
 }
 
 #[tauri::command]
 fn cmd_create_stock_in(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     let operator_id = verify_token(&token);
     let product_id = req.get("product_id").and_then(|v| v.as_i64()).unwrap_or(0);
     let quantity = req.get("quantity").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -667,6 +670,8 @@ fn cmd_create_stock_in(token: String, req: serde_json::Value) -> Result<serde_js
 
 #[tauri::command]
 fn cmd_create_stock_out(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     let operator_id = verify_token(&token);
     let product_id = req.get("product_id").and_then(|v| v.as_i64()).unwrap_or(0);
     let quantity = req.get("quantity").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -678,12 +683,15 @@ fn cmd_create_stock_out(token: String, req: serde_json::Value) -> Result<serde_j
 // ======== 积分管理 ========
 #[tauri::command]
 fn cmd_get_points_logs(token: String, member_id: Option<i64>, days: Option<i32>) -> Vec<serde_json::Value> {
-    verify_token(&token);
+    // P2 #13 修复: 添加 require_auth 检查
+    if require_auth(&token).is_err() { return vec![]; }
     get_points_logs(member_id, days)
 }
 
 #[tauri::command]
 fn cmd_add_points(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     let operator_id = verify_token(&token);
     let member_id = req.get("member_id").and_then(|v| v.as_i64()).unwrap_or(0);
     let points = req.get("points").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -696,12 +704,15 @@ fn cmd_add_points(token: String, req: serde_json::Value) -> Result<serde_json::V
 // ======== 优惠券管理 ========
 #[tauri::command]
 fn cmd_get_coupons(token: String, status: Option<String>) -> Vec<serde_json::Value> {
-    verify_token(&token);
+    // P2 #13 修复: 添加 require_auth 检查
+    if require_auth(&token).is_err() { return vec![]; }
     get_coupons(status)
 }
 
 #[tauri::command]
 fn cmd_create_coupon(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     verify_token(&token);
     let name = req.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let coupon_type = req.get("coupon_type").and_then(|v| v.as_str()).map(String::from);
@@ -717,6 +728,8 @@ fn cmd_create_coupon(token: String, req: serde_json::Value) -> Result<serde_json
 
 #[tauri::command]
 fn cmd_update_coupon(token: String, id: i64, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     verify_token(&token);
     let name = req.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let coupon_type = req.get("coupon_type").and_then(|v| v.as_str()).map(String::from);
@@ -732,25 +745,30 @@ fn cmd_update_coupon(token: String, id: i64, req: serde_json::Value) -> Result<s
 
 #[tauri::command]
 fn cmd_delete_coupon(token: String, id: i64) -> Result<(), String> {
-    verify_token(&token);
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     delete_coupon(id)
 }
 
 #[tauri::command]
 fn cmd_claim_coupon(token: String, coupon_id: i64, member_id: i64) -> Result<serde_json::Value, String> {
-    verify_token(&token);
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     claim_coupon(coupon_id, member_id)
 }
 
 // ======== 短信营销 ========
 #[tauri::command]
 fn cmd_get_sms_templates(token: String) -> Vec<serde_json::Value> {
-    verify_token(&token);
+    // P2 #13 修复: 添加 require_auth 检查
+    if require_auth(&token).is_err() { return vec![]; }
     get_sms_templates()
 }
 
 #[tauri::command]
 fn cmd_create_sms_template(token: String, req: serde_json::Value) -> Result<serde_json::Value, String> {
+    // P2 #13 修复: 添加 require_auth 检查
+    require_auth(&token)?;
     verify_token(&token);
     let name = req.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let content = req.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();

@@ -74,27 +74,32 @@ pub fn sale_product(req: SaleRequest) -> Result<Sale, String> {
 }
 
 pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
-    // Fix #2: Single lock for entire batch (atomic transaction)
-    // Fix #12: Explicit source_type field - inventory first, then products
-    let conn = DB.lock();
+    // P0 #5 修复: 先查询 table_name 和 member_name，再开启事务
+    let table_name: Option<String>;
+    let member_name: Option<String>;
+    {
+        let conn = DB.lock();
+        table_name = if let Some(tid) = req.table_id { conn.query_row("SELECT name FROM tables WHERE id = ?1", params![tid], |r| r.get(0)).ok() } else { None };
+        member_name = if let Some(mid) = req.member_id { conn.query_row("SELECT name FROM members WHERE id = ?1", params![mid], |r| r.get(0)).ok() } else { None };
+    }
+    
+    let mut conn = DB.lock();
+    let tx = conn.transaction().map_err(|e| format!("事务创建失败: {}", e))?;
     let pm = req.payment_method.clone().unwrap_or_else(|| "cash".to_string());
     let now = chrono::Utc::now().to_rfc3339();
-    let table_name: Option<String> = if let Some(tid) = req.table_id { conn.query_row("SELECT name FROM tables WHERE id = ?1", params![tid], |r| r.get(0)).ok() } else { None };
-    let member_name: Option<String> = if let Some(mid) = req.member_id { conn.query_row("SELECT name FROM members WHERE id = ?1", params![mid], |r| r.get(0)).ok() } else { None };
 
-    // Phase 1: Validate all items and check stock
+    // Phase 1: Validate all items and check stock - 使用 tx 而不是 conn
     let mut validated_items = Vec::new();
     for item in &req.items {
         validate_positive_id(item.product_id, "商品ID").map_err(|e| e.to_string())?;
         validate_quantity(item.quantity).map_err(|e| e.to_string())?;
         
-        // Fix #12: Try inventory first, then products - explicit priority
-        let result: Option<(String, f64, i32, String)> = conn.query_row(
+        let result: Option<(String, f64, i32, String)> = tx.query_row(
             "SELECT name, price, quantity, 'inventory' as source FROM inventory WHERE id = ?1",
             params![item.product_id],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
         ).ok().or_else(|| {
-            conn.query_row(
+            tx.query_row(
                 "SELECT name, price, stock, 'products' as source FROM products WHERE id = ?1 AND is_active = 1",
                 params![item.product_id],
                 |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
@@ -105,49 +110,41 @@ pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
             .ok_or_else(|| format!("商品ID {} 不存在", item.product_id))?;
         
         if current_stock < item.quantity {
+            tx.rollback().ok();
             return Err(format!("商品「{}」库存不足，当前: {}，需要: {}", name, current_stock, item.quantity));
         }
         
         validated_items.push((item.product_id, item.quantity, name, unit_price, source));
     }
 
-    // Phase 2: Deduct stock (all or nothing - if any fails, rollback)
+    // Phase 2: Deduct stock with transaction rollback on failure
     let mut sales = Vec::new();
     for (pid, qty, name, unit_price, source) in &validated_items {
         let total = round_to_two(*unit_price * *qty as f64);
         
-        // Atomic deduction with stock check
         let rows = if source == "inventory" {
-            conn.execute(
+            tx.execute(
                 "UPDATE inventory SET quantity = quantity - ?1 WHERE id = ?2 AND quantity >= ?1",
                 params![qty, pid],
             ).map_err(|e| format!("扣减库存失败: {}", e))?
         } else {
-            conn.execute(
+            tx.execute(
                 "UPDATE products SET stock = stock - ?1 WHERE id = ?2 AND stock >= ?1 AND is_active = 1",
                 params![qty, pid],
             ).map_err(|e| format!("扣减库存失败: {}", e))?
         };
         
         if rows == 0 {
-            // Rollback: restore previously deducted items
-            for (prev_pid, prev_qty, _, _, prev_source) in &validated_items {
-                if *prev_pid == *pid { break; }
-                if prev_source == "inventory" {
-                    conn.execute("UPDATE inventory SET quantity = quantity + ?1 WHERE id = ?2", params![prev_qty, prev_pid]).ok();
-                } else {
-                    conn.execute("UPDATE products SET stock = stock + ?1 WHERE id = ?2", params![prev_qty, prev_pid]).ok();
-                }
-            }
+            tx.rollback().ok();
             return Err(format!("商品「{}」库存不足（并发扣减）", name));
         }
         
-        conn.execute(
+        tx.execute(
             "INSERT INTO sales (inventory_id, product_name, quantity, unit_price, total_amount, table_id, member_id, payment_method, remark, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![pid, name, qty, unit_price, total, req.table_id, req.member_id, &pm, req.remark, &now],
         ).map_err(|e| e.to_string())?;
         
-        let id = conn.last_insert_rowid();
+        let id = tx.last_insert_rowid();
         sales.push(Sale {
             id, product_name: name.clone(), quantity: *qty, unit_price: *unit_price,
             total_amount: total, table_id: req.table_id, table_name: table_name.clone(),
@@ -156,5 +153,6 @@ pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
         });
     }
     
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(sales)
 }

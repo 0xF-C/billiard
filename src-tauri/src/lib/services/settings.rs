@@ -129,13 +129,14 @@ fn default_settings() -> Settings {
 pub fn get_member_day_discount() -> i32 {
     let settings = load_settings();
     
+    // P2 #7 修复: 统一使用本地时间判断会员日
+    let local_now = chrono::Local::now();
+    
     // Fix #9: Check weekend discount
     if let Some(ref wd) = settings.special_rates.weekend_discount {
         if wd.enabled {
-            // Use strftime('%w') for day of week: 0=Sun, 1=Mon, ..., 6=Sat
-            let day_of_week: String = chrono::Local::now().format("%w").to_string();
+            let day_of_week = local_now.format("%w").to_string();
             if let Ok(dow) = day_of_week.parse::<u32>() {
-                // Convert to Mon=1, ..., Sun=7 format
                 let mon_based = if dow == 0 { 7 } else { dow };
                 if wd.days.split(',').any(|d| {
                     d.trim().parse::<u32>().ok() == Some(mon_based)
@@ -146,9 +147,9 @@ pub fn get_member_day_discount() -> i32 {
         }
     }
     
-    // Check member day discount
+    // Check member day discount - 使用本地日期格式 MM-DD
     if settings.member_day.enabled {
-        let today = chrono::Local::now().format("%m-%d").to_string();
+        let today = local_now.format("%m-%d").to_string();
         if settings.member_day.dates.split(',').any(|d| d.trim() == today) {
             return settings.member_day.discount;
         }

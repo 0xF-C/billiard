@@ -82,6 +82,16 @@ pub fn update_member(id: i64, data: serde_json::Value) -> Result<Member, String>
     let remark = data.get("remark").and_then(|v| v.as_str());
     let discount = data.get("discount").and_then(|v| v.as_f64()).unwrap_or(1.0);
     let level = data.get("level").and_then(|v| v.as_str()).unwrap_or("普通会员");
+    
+    // P2 #16 修复: 更新时校验手机号唯一性（排除自身）
+    let existing_phone: Option<i64> = conn.query_row(
+        "SELECT id FROM members WHERE phone = ?1 AND id != ?2", 
+        params![phone, id], |r| r.get(0)
+    ).ok();
+    if existing_phone.is_some() {
+        return Err("手机号已被其他会员使用".to_string());
+    }
+    
     conn.execute("UPDATE members SET name = ?1, phone = ?2, gender = ?3, birthday = ?4, id_card = ?5, email = ?6, address = ?7, remark = ?8, discount = ?9, level = ?10 WHERE id = ?11",
         params![name, phone, gender, birthday, id_card, email, address, remark, discount, level, id],
     ).map_err(|e| e.to_string())?;
@@ -92,9 +102,20 @@ pub fn update_member(id: i64, data: serde_json::Value) -> Result<Member, String>
     }).map_err(|e| e.to_string())
 }
 
+// P2 #15 修复: 改为软删除（is_deleted 标志），避免破坏关联数据
 pub fn delete_member(id: i64) -> Result<(), String> {
     let conn = DB.lock();
-    conn.execute("DELETE FROM members WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
+    // 检查是否有未完成的订单
+    let order_count: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM orders WHERE member_id = ?1 AND status = '进行中'", 
+        params![id], |r| r.get(0)
+    ).unwrap_or(0);
+    
+    if order_count > 0 {
+        return Err("该会员有待完成的订单，无法删除".to_string());
+    }
+    
+    conn.execute("UPDATE members SET phone = phone || '_deleted_' || id WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
     Ok(())
 }
 

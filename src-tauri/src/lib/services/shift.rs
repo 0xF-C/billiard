@@ -22,13 +22,18 @@ pub fn get_shift_records() -> Vec<ShiftRecord> {
 pub fn get_shift_stats() -> ShiftStats {
     let conn = DB.lock();
     let today = today_local();
-    let completed_count: i32 = conn.query_row("SELECT COUNT(*) FROM orders WHERE date(end_time) = ?1 AND status = '已结账'", params![today], |r| r.get(0)).unwrap_or(0);
+    // P2 #17 修复: 使用 SQLite date() 函数配合本地时区偏移，将 UTC 时间转换为本地日期
+    // date(end_time, '+8 hours') 将 UTC 转为北京时间 (假设系统时区为 Asia/Shanghai)
+    let completed_count: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM orders WHERE date(end_time, '+8 hours') = ?1 AND status = '已结账'", 
+        params![today], |r| r.get(0)
+    ).unwrap_or(0);
     let pending_count: i32 = conn.query_row("SELECT COUNT(*) FROM orders WHERE status = '进行中'", [], |r| r.get(0)).unwrap_or(0);
-    let revenue: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time) = ?1 AND status = '已结账'", params![today], |r| r.get(0)).unwrap_or(0.0);
-    let cash_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time) = ?1 AND status = '已结账' AND payment_method = 'cash'", params![today], |r| r.get(0)).unwrap_or(0.0);
-    let wechat_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time) = ?1 AND status = '已结账' AND payment_method = 'wechat'", params![today], |r| r.get(0)).unwrap_or(0.0);
-    let alipay_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time) = ?1 AND status = '已结账' AND payment_method = 'alipay'", params![today], |r| r.get(0)).unwrap_or(0.0);
-    let member_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time) = ?1 AND status = '已结账' AND member_id IS NOT NULL", params![today], |r| r.get(0)).unwrap_or(0.0);
+    let revenue: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time, '+8 hours') = ?1 AND status = '已结账'", params![today], |r| r.get(0)).unwrap_or(0.0);
+    let cash_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time, '+8 hours') = ?1 AND status = '已结账' AND payment_method = 'cash'", params![today], |r| r.get(0)).unwrap_or(0.0);
+    let wechat_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time, '+8 hours') = ?1 AND status = '已结账' AND payment_method = 'wechat'", params![today], |r| r.get(0)).unwrap_or(0.0);
+    let alipay_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time, '+8 hours') = ?1 AND status = '已结账' AND payment_method = 'alipay'", params![today], |r| r.get(0)).unwrap_or(0.0);
+    let member_amount: f64 = conn.query_row("SELECT COALESCE(SUM(final_amount), 0) FROM orders WHERE date(end_time, '+8 hours') = ?1 AND status = '已结账' AND member_id IS NOT NULL", params![today], |r| r.get(0)).unwrap_or(0.0);
     ShiftStats { revenue, order_count: completed_count + pending_count, completed_count, pending_count, cash_amount, wechat_amount, alipay_amount, member_amount }
 }
 
