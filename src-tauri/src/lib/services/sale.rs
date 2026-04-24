@@ -184,8 +184,11 @@ fn auto_print_sale(sales: &[Sale]) {
     use crate::lib::services::settings::load_settings;
     let settings = load_settings();
     if !settings.auto_print_on_sale.unwrap_or(true) {
+        log::info!("[SaleAutoPrint] auto_print_on_sale is disabled, skipping");
         return;
     }
+
+    log::info!("[SaleAutoPrint] Starting auto print for {} items", sales.len());
 
     let shop_name = settings.shop_name.unwrap_or_else(|| "台球厅".to_string());
 

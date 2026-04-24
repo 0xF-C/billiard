@@ -2,7 +2,31 @@
   <div class="permissions-page">
     <div class="page-header">
       <h1 class="page-title">{{ t('permissions') }}</h1>
-      <el-button type="primary" :icon="Plus" @click="showAdd = true">{{ t('addRole') }}</el-button>
+      <el-button type="primary" :icon="Plus" @click="showAddRole = true">{{ t('addRole') }}</el-button>
+    </div>
+
+    <!-- User Management Section -->
+    <div class="settings-section">
+      <h3 class="section-title">{{ t('userManagement') }}</h3>
+      <div class="user-toolbar">
+        <el-button type="primary" size="small" @click="showAddUser">
+          <el-icon><Plus /></el-icon>
+          {{ t('add') }}
+        </el-button>
+      </div>
+      <el-table :data="users" style="width: 100%" size="default">
+        <el-table-column prop="username" :label="t('name')" />
+        <el-table-column prop="role" :label="t('role')" />
+        <el-table-column prop="created_at" :label="t('createdAt')">
+          <template #default="{ row }">{{ row.created_at || '-' }}</template>
+        </el-table-column>
+        <el-table-column :label="t('actions')" width="160">
+          <template #default="{ row }">
+            <el-button size="small" @click="editUser(row)">{{ t('edit') }}</el-button>
+            <el-button size="small" type="danger" @click="deleteUser(row)" :disabled="row.username === 'admin'">{{ t('delete') }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </div>
 
     <div class="roles-grid">
@@ -40,7 +64,7 @@
       </el-table>
     </div>
 
-    <el-dialog v-model="showAdd" :title="t('addRole')" width="500px" top="5vh" append-to-body>
+    <el-dialog v-model="showAddRole" :title="t('addRole')" width="500px" top="5vh" append-to-body>
       <el-form :model="form" label-width="100px">
         <el-form-item :label="t('roleName')">
           <el-input v-model="form.name" />
@@ -59,18 +83,48 @@
         <el-button type="primary" @click="submitRole">{{ t('confirm') }}</el-button>
       </template>
     </el-dialog>
+
+    <!-- Add/Edit User Dialog -->
+    <el-dialog v-model="showUserForm" :title="editUserTarget ? t('edit') : t('add')" width="400px" top="5vh" append-to-body>
+      <div class="form-item">
+        <label>{{ t('name') }}</label>
+        <el-input v-model="userForm.username" :placeholder="t('name')" />
+      </div>
+      <div class="form-item">
+        <label>{{ editUserTarget ? t('password') + ' (' + t('optional') + ')' : t('password') }}</label>
+        <el-input v-model="userForm.password" type="password" show-password :placeholder="t('password')" />
+      </div>
+      <div class="form-item">
+        <label>{{ t('role') }}</label>
+        <el-select v-model="userForm.role" style="width: 100%">
+          <el-option :label="t('admin')" value="管理员" />
+          <el-option :label="t('cashier')" value="收银员" />
+          <el-option :label="t('staff')" value="服务员" />
+        </el-select>
+      </div>
+      <template #footer>
+        <el-button @click="showUserForm=false">{{ t('cancel') }}</el-button>
+        <el-button type="primary" @click="saveUser">{{ t('save') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { t } from '../i18n'
+import { getUsers, createUser, updateUser, deleteUser as delUser } from '../api'
 
+const showAddRole = ref(false)
+const showAddUser = ref(false)
+const showUserForm = ref(false)
+const editUserTarget = ref(null)
+const users = ref([])
 
-const showAdd = ref(false)
 const form = reactive({ name: '', description: '', permissions: [] })
+const userForm = reactive({ username: '', password: '', role: '服务员' })
 
 const allPermissions = [
   'tableManage', 'orderManage', 'memberManage', 'recharge', 'pointsManage',
@@ -110,7 +164,7 @@ const submitRole = () => {
   if (!form.name) { ElMessage.warning(t('pleaseComplete')); return }
   roles.value.push({ id: Date.now(), ...form, isSystem: false, userCount: 0 })
   ElMessage.success(t('addSuccess'))
-  showAdd.value = false
+  showAddRole.value = false
 }
 
 const editRole = (role) => ElMessage.info(`${t('edit')}: ${role.name}`)
@@ -119,6 +173,65 @@ const deleteRole = async (role) => {
   const idx = roles.value.findIndex(r => r.id === role.id)
   if (idx !== -1) { roles.value.splice(idx, 1); ElMessage.success(t('deleteSuccess')) }
 }
+
+const loadUsers = async () => {
+  try {
+    users.value = await getUsers()
+  } catch (e) {
+    users.value = [{ id: 1, username: 'admin', role: '管理员', created_at: '2024-01-01' }]
+  }
+}
+
+const showAddUser = () => {
+  editUserTarget.value = null
+  userForm.username = ''
+  userForm.password = ''
+  userForm.role = '服务员'
+  showUserForm.value = true
+}
+
+const editUser = (user) => {
+  editUserTarget.value = user
+  userForm.username = user.username
+  userForm.password = ''
+  userForm.role = user.role
+  showUserForm.value = true
+}
+
+const saveUser = async () => {
+  if (!userForm.username) return ElMessage.warning(t('pleaseComplete'))
+  try {
+    if (editUserTarget.value) {
+      const data = { username: userForm.username, role: userForm.role }
+      if (userForm.password) data.password = userForm.password
+      await updateUser(editUserTarget.value.id, data)
+      ElMessage.success(t('updateSuccess'))
+    } else {
+      if (!userForm.password) return ElMessage.warning(t('pleaseComplete'))
+      await createUser(userForm)
+      ElMessage.success(t('createSuccess'))
+    }
+    showUserForm.value = false
+    await loadUsers()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.error || t('operationFailed'))
+  }
+}
+
+const deleteUser = async (user) => {
+  try {
+    await ElMessageBox.confirm(t('confirmDelete'), t('confirm'), { type: 'warning' })
+    await delUser(user.id)
+    ElMessage.success(t('deleteSuccess'))
+    await loadUsers()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(t('operationFailed'))
+  }
+}
+
+onMounted(() => {
+  loadUsers()
+})
 </script>
 
 <style scoped>
@@ -171,4 +284,22 @@ const deleteRole = async (role) => {
 
 .section-header { margin-bottom: 16px; }
 .section-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+
+.settings-section {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 24px;
+}
+.section-title { font-size: 14px; font-weight: 600; margin: 0 0 16px 0; text-transform: uppercase; }
+.user-toolbar { margin-bottom: 12px; }
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.form-item label { font-size: 13px; color: var(--text-secondary); }
 </style>

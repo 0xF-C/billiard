@@ -97,15 +97,52 @@
 
     <div class="action-bar">
       <el-button type="primary" @click="save">{{ t('save') }}</el-button>
-      <el-button @click="manualBackup">{{ t('manualBackup') }}</el-button>
+      <el-button @click="doBackup" :loading="backingUp">{{ t('manualBackup') }}</el-button>
+    </div>
+
+    <!-- Backup/Restore Section -->
+    <div class="section backup-restore-section">
+      <h3>{{ t('backupRestore') }}</h3>
+      <div class="backup-card" @click="doBackup">
+        <div class="backup-icon">
+          <el-icon><Download /></el-icon>
+        </div>
+        <div class="backup-info">
+          <span class="backup-title">{{ t('createBackup') }}</span>
+          <span class="backup-desc">{{ t('downloadDb') }}</span>
+        </div>
+        <el-icon class="arrow"><ArrowRight /></el-icon>
+      </div>
+
+      <div class="divider">
+        <span>{{ t('or') }}</span>
+      </div>
+
+      <div class="backup-card restore" @click="triggerRestore">
+        <div class="backup-icon">
+          <el-icon><Upload /></el-icon>
+        </div>
+        <div class="backup-info">
+          <span class="backup-title">{{ t('restoreData') }}</span>
+          <span class="backup-desc">{{ t('restoreFromBackup') }}</span>
+        </div>
+        <el-icon class="arrow"><ArrowRight /></el-icon>
+      </div>
+      <input ref="restoreInput" type="file" accept=".db,.sqlite" style="display:none" @change="doRestore" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Download, Upload, ArrowRight } from '@element-plus/icons-vue'
 import { t } from '../i18n'
+import { currentLang } from '../i18n'
+import axios from 'axios'
+
+const restoreInput = ref(null)
+const backingUp = ref(false)
 
 
 const backup = reactive({ auto: true, interval: 'daily' })
@@ -122,7 +159,45 @@ const backupHistory = ref([
 const formatTime = (d) => new Date(d).toLocaleString(currentLang.value === 'zh' ? 'zh-CN' : (currentLang.value === 'en' ? 'en-US' : 'zh-CN'))
 
 const save = () => ElMessage.success(t('saveSuccess'))
-const manualBackup = () => ElMessage.success(t('backupSuccess'))
+
+const doBackup = async () => {
+  backingUp.value = true
+  try {
+    ElMessage.info(t('creatingBackup'))
+    const res = await axios.get('/api/settings/backup', { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `billiard_backup_${new Date().toISOString().slice(0,10)}.db`
+    link.click()
+    window.URL.revokeObjectURL(url)
+    ElMessage.success(t('backupSuccess'))
+  } catch (e) {
+    ElMessage.error(t('operationFailed'))
+  } finally {
+    backingUp.value = false
+  }
+}
+
+const triggerRestore = () => {
+  restoreInput.value?.click()
+}
+
+const doRestore = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  try {
+    await ElMessageBox.confirm(t('restoreConfirm') || '恢复后现有数据将丢失，是否继续？', t('confirm'), { type: 'warning' })
+    const formData = new FormData()
+    formData.append('file', file)
+    await axios.post('/api/settings/restore', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    ElMessage.success(t('restoreSuccess'))
+  } catch (err) {
+    if (err !== 'cancel') ElMessage.error(err.response?.data?.error || t('operationFailed'))
+  }
+}
 </script>
 
 <style scoped>
@@ -164,5 +239,48 @@ const manualBackup = () => ElMessage.success(t('backupSuccess'))
   gap: 12px;
   margin-top: 24px;
   justify-content: flex-end;
+}
+
+.backup-restore-section { margin-top: 24px; }
+
+.backup-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.backup-card:hover { border-color: var(--accent-primary); background: var(--bg-tertiary); }
+.backup-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.backup-info { flex: 1; display: flex; flex-direction: column; }
+.backup-title { font-weight: 600; }
+.backup-desc { font-size: 12px; color: var(--text-secondary); }
+.arrow { color: var(--text-tertiary); }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
 }
 </style>

@@ -27,41 +27,21 @@
           </div>
           <el-icon class="arrow"><ArrowRight /></el-icon>
         </div>
-        <div class="setting-card" @click="$router.push('/permissions')">
-          <div class="setting-icon">
-            <el-icon><User /></el-icon>
-          </div>
-          <div class="setting-body">
-            <span class="setting-name">{{ t('userPermission') }}</span>
-            <span class="setting-desc">{{ t('accountPermission') }}</span>
-          </div>
-          <el-icon class="arrow"><ArrowRight /></el-icon>
-        </div>
-        <div class="setting-card" @click="$router.push('/data-security')">
-          <div class="setting-icon">
-            <el-icon><DocumentCopy /></el-icon>
-          </div>
-          <div class="setting-body">
-            <span class="setting-name">{{ t('backupRestore') }}</span>
-            <span class="setting-desc">{{ t('backupDesc') }}</span>
-          </div>
-          <el-icon class="arrow"><ArrowRight /></el-icon>
-        </div>
       </div>
     </div>
 
     <div class="settings-section">
       <h3 class="section-title">{{ t('language') }}</h3>
       <div class="lang-option">
-<el-select v-model="curLang" @change="changeLang" class="lang-select">
-            <el-option value="zh" label="中文" />
-            <el-option value="ug" label="维吾尔语" />
-            <el-option value="en" label="English" />
-          </el-select>
+        <el-select v-model="curLang" @change="changeLang" class="lang-select">
+          <el-option value="zh" label="中文" />
+          <el-option value="ug" label="维吾尔语" />
+          <el-option value="en" label="English" />
+        </el-select>
       </div>
     </div>
 
-    <!-- {{ t('PrintSettingsDialog') }} -->
+    <!-- Printer Config Dialog -->
     <el-dialog v-model="showPrinterDlg" :title="t('printerConfig')" width="800px" class="settings-dialog" top="5vh" append-to-body>
       <div class="dialog-content">
         <div class="printer-header">
@@ -179,98 +159,6 @@
       </template>
     </el-dialog>
 
-    <!-- {{ t('UserManagementDialog') }} -->
-    <el-dialog v-model="showUserDlg" :title="t('userPermission')" width="700px" class="settings-dialog" top="5vh" append-to-body>
-      <div class="dialog-content">
-        <div class="section-header">
-          <span>{{ t('memberList') }}</span>
-          <el-button size="small" type="primary" @click="showAddUser">
-            <el-icon><Plus /></el-icon>
-            {{ t('add') }}
-          </el-button>
-        </div>
-        <div class="user-table">
-          <el-table :data="users" style="width: 100%" size="default">
-            <el-table-column prop="username" :label="t('name')" />
-            <el-table-column prop="role" :label="t('memberLevel')" />
-            <el-table-column prop="created_at" :label="t('createdAt')">
-              <template #default="{ row }">{{ row.created_at || '-' }}</template>
-            </el-table-column>
-            <el-table-column :label="t('actions')" width="160">
-              <template #default="{ row }">
-                <el-button size="small" @click="editUser(row)" :icon="Edit" />
-                <el-button size="small" type="danger" @click="deleteUser(row)" :icon="Delete" :disabled="row.username === 'admin'" />
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="showUserDlg=false">{{ t('cancel') }}</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- {{ t('AddEditUserDialog') }} -->
-    <el-dialog v-model="showUserForm" :title="editUserTarget ? t('edit') : t('add')" width="400px" class="settings-dialog" top="5vh" append-to-body>
-      <div class="dialog-content">
-        <div class="form-item">
-          <label>{{ t('name') }}</label>
-          <el-input v-model="userForm.username" :placeholder="t('name')" />
-        </div>
-        <div class="form-item">
-          <label>{{ editUserTarget ? t('password') + ' (' + t('optional') + ')' : t('password') }}</label>
-          <el-input v-model="userForm.password" type="password" show-password :placeholder="t('password')" />
-        </div>
-        <div class="form-item">
-          <label>{{ t('memberLevel') }}</label>
-          <el-select v-model="userForm.role" style="width: 100%">
-            <el-option :label="t('admin')" value="admin" />
-            <el-option :label="t('cashier')" value="cashier" />
-            <el-option :label="t('staff')" value="staff" />
-          </el-select>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="showUserForm=false">{{ t('cancel') }}</el-button>
-        <el-button type="primary" @click="saveUser">{{ t('save') }}</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- {{ t('BackupRestoreDialog') }} -->
-    <el-dialog v-model="showBackupDlg" :title="t('backupRestore')" width="480px" class="settings-dialog" top="5vh" append-to-body>
-      <div class="dialog-content">
-        <div class="backup-card" @click="doBackup">
-          <div class="backup-icon">
-            <el-icon><Download /></el-icon>
-          </div>
-          <div class="backup-info">
-            <span class="backup-title">{{ t('createBackup') }}</span>
-            <span class="backup-desc">{{ t('downloadDb') }}</span>
-          </div>
-          <el-icon class="arrow"><ArrowRight /></el-icon>
-        </div>
-
-        <div class="divider">
-          <span>{{ t('or') }}</span>
-        </div>
-
-        <div class="backup-card restore" @click="triggerRestore">
-          <div class="backup-icon">
-            <el-icon><Upload /></el-icon>
-          </div>
-          <div class="backup-info">
-            <span class="backup-title">{{ t('restoreData') }}</span>
-            <span class="backup-desc">{{ t('restoreFromBackup') }}</span>
-          </div>
-          <el-icon class="arrow"><ArrowRight /></el-icon>
-        </div>
-        <input ref="restoreInput" type="file" accept=".db,.sqlite" style="display:none" @change="doRestore" />
-      </div>
-      <template #footer>
-        <el-button @click="showBackupDlg=false">{{ t('cancel') }}</el-button>
-      </template>
-    </el-dialog>
-
     <!-- Print Template Dialog -->
     <el-dialog v-model="showPrintTemplateDlg" :title="t('printTemplate')" width="600px" class="settings-dialog" top="5vh" append-to-body>
       <div class="dialog-content">
@@ -356,23 +244,17 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { PriceTag, Printer, User, DocumentCopy, ArrowRight, Download, Upload, Connection, Document, Plus, Edit, Delete, Monitor } from '@element-plus/icons-vue'
+import { PriceTag, Printer, ArrowRight, Document, Plus, Edit, Delete, Monitor } from '@element-plus/icons-vue'
 import { currentLang, setLang, t } from '../i18n'
-import { getSettings, saveSettings, getUsers, createUser, updateUser, deleteUser as delUser, getPrinters, createPrinter as apiCreatePrinter, updatePrinter as apiUpdatePrinter, deletePrinter as apiDeletePrinter, setDefaultPrinter as apiSetDefaultPrinter, togglePrinter as apiTogglePrinter, testPrinter as apiTestPrinter } from '../api'
-import axios from 'axios'
+import { getSettings, saveSettings, getPrinters, createPrinter as apiCreatePrinter, updatePrinter as apiUpdatePrinter, deletePrinter as apiDeletePrinter, setDefaultPrinter as apiSetDefaultPrinter, togglePrinter as apiTogglePrinter, testPrinter as apiTestPrinter } from '../api'
 
 const curLang = ref(currentLang.value)
 const showPrinterDlg = ref(false)
 const showUserDlg = ref(false)
 const showBackupDlg = ref(false)
-const showUserForm = ref(false)
-const showPrinterForm = ref(false)
 const showPrintTemplateDlg = ref(false)
-const editUserTarget = ref(null)
 const editPrinterTarget = ref(null)
-const users = ref([])
 const printers = ref([])
-const restoreInput = ref(null)
 const testingPrinter = ref(null)
 
 const printerForm = reactive({
@@ -383,12 +265,6 @@ const printerForm = reactive({
   serial_port: '',
   baud_rate: 9600,
   paper_width: 80,
-})
-
-const userForm = reactive({
-  username: '',
-  password: '',
-  role: '服务员'
 })
 
 const printTemplate = reactive({
@@ -595,111 +471,8 @@ const getConnectionLabel = (type) => {
   return map[type] || type
 }
 
-const savePrinter = async () => {
-  try {
-    await saveSettings({ printer: printerForm })
-    ElMessage.success(t('saveSuccess'))
-    showPrinterDlg.value = false
-  } catch (e) {
-    ElMessage.error(t('operationFailed'))
-  }
-}
-
-const loadUsers = async () => {
-  try {
-    users.value = await getUsers()
-  } catch (e) {
-    users.value = [
-      { id: 1, username: 'admin', role: '管理员', created_at: '2024-01-01' }
-    ]
-  }
-}
-
-const showAddUser = () => {
-  editUserTarget.value = null
-  userForm.username = ''
-  userForm.password = ''
-  userForm.role = '服务员'
-  showUserForm.value = true
-}
-
-const editUser = (user) => {
-  editUserTarget.value = user
-  userForm.username = user.username
-  userForm.password = ''
-  userForm.role = user.role
-  showUserForm.value = true
-}
-
-const saveUser = async () => {
-  if (!userForm.username) return ElMessage.warning(t('pleaseComplete'))
-  try {
-    if (editUserTarget.value) {
-      const data = { username: userForm.username, role: userForm.role }
-      if (userForm.password) data.password = userForm.password
-      await updateUser(editUserTarget.value.id, data)
-      ElMessage.success(t('updateSuccess'))
-    } else {
-      if (!userForm.password) return ElMessage.warning(t('pleaseComplete'))
-      await createUser(userForm)
-      ElMessage.success(t('createSuccess'))
-    }
-    showUserForm.value = false
-    await loadUsers()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || t('operationFailed'))
-  }
-}
-
-const deleteUser = async (user) => {
-  try {
-    await delUser(user.id)
-    ElMessage.success(t('deleteSuccess'))
-    await loadUsers()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || t('operationFailed'))
-  }
-}
-
-const doBackup = async () => {
-  try {
-    ElMessage.info(t('creatingBackup'))
-    const res = await axios.get('/api/settings/backup', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([res.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `billiard_backup_${new Date().toISOString().slice(0,10)}.db`
-    link.click()
-    window.URL.revokeObjectURL(url)
-    ElMessage.success(t('backupSuccess'))
-  } catch (e) {
-    ElMessage.error(t('operationFailed'))
-  }
-}
-
-const triggerRestore = () => {
-  restoreInput.value?.click()
-}
-
-const doRestore = async (e) => {
-  const file = e.target.files[0]
-  if (!file) return
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-    await axios.post('/api/settings/restore', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    ElMessage.success(t('restoreSuccess'))
-    showBackupDlg.value = false
-  } catch (err) {
-    ElMessage.error(err.response?.data?.error || t('operationFailed'))
-  }
-}
-
 onMounted(() => {
   loadSettings()
-  loadUsers()
   loadPrinters()
 })
 </script>
