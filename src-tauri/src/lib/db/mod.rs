@@ -344,17 +344,16 @@ fn run_migrations(conn: &Connection) -> SqliteResult<()> {
 
         let user_count: i32 = conn.query_row("SELECT COUNT(*) FROM users", [], |r| r.get(0)).unwrap_or(0);
         if user_count == 0 {
-            // Generate a random password for first login
-            let random_password = Uuid::new_v4().to_string().chars().take(8).collect::<String>();
+            let default_password = "admin123";
             let bcrypt = {
                 use bcrypt::{hash, DEFAULT_COST};
-                hash(&random_password, DEFAULT_COST).unwrap_or_default()
+                hash(default_password, DEFAULT_COST).unwrap_or_default()
             };
             conn.execute(
                 "INSERT INTO users (username, bcrypt_hash, role, first_login) VALUES ('admin', ?1, '管理员', 1)",
                 params![bcrypt],
             )?;
-            info!("⚠️  Default admin created with random password: {} (MUST CHANGE ON FIRST LOGIN)", random_password);
+            info!("Default admin created with password: {}", default_password);
         } else {
             let admin_exists: i32 = conn.query_row(
                 "SELECT COUNT(*) FROM users WHERE username = 'admin'",
@@ -362,16 +361,16 @@ fn run_migrations(conn: &Connection) -> SqliteResult<()> {
                 |r| r.get(0)
             ).unwrap_or(0);
             if admin_exists == 0 {
-                let random_password = Uuid::new_v4().to_string().chars().take(8).collect::<String>();
+                let default_password = "admin123";
                 let bcrypt = {
                     use bcrypt::{hash, DEFAULT_COST};
-                    hash(&random_password, DEFAULT_COST).unwrap_or_default()
+                    hash(default_password, DEFAULT_COST).unwrap_or_default()
                 };
                 conn.execute(
                     "INSERT INTO users (username, bcrypt_hash, role, first_login) VALUES ('admin', ?1, '管理员', 1)",
                     params![bcrypt],
                 )?;
-                info!("⚠️  Default admin created with random password: {} (MUST CHANGE ON FIRST LOGIN)", random_password);
+                info!("Default admin created with password: {}", default_password);
             }
         }
 
