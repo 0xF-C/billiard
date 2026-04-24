@@ -171,18 +171,18 @@ pub fn get_member_balance_logs(member_id: i64) -> Vec<serde_json::Value> {
             Ok(s) => s,
             Err(e) => { error!("Failed to prepare recharge logs query: {}", e); return vec![]; }
         };
-        match stmt.query_map([], map_balance_log_row) {
-            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
-            Err(e) => { error!("Failed to query recharge logs: {}", e); vec![] }
-        }
+        // Use .map(...collect()).unwrap_or_else() so the MappedRows borrow
+        // is fully consumed (via collect) before stmt is dropped
+        stmt.query_map([], map_balance_log_row)
+            .map(|iter| iter.filter_map(|r| r.ok()).collect::<Vec<_>>())
+            .unwrap_or_else(|e| { error!("Failed to query recharge logs: {}", e); vec![] })
     } else {
         let mut stmt = match conn.prepare(sql_one) {
             Ok(s) => s,
             Err(e) => { error!("Failed to prepare balance logs query: {}", e); return vec![]; }
         };
-        match stmt.query_map(params![member_id], map_balance_log_row) {
-            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
-            Err(e) => { error!("Failed to query balance logs: {}", e); vec![] }
-        }
+        stmt.query_map(params![member_id], map_balance_log_row)
+            .map(|iter| iter.filter_map(|r| r.ok()).collect::<Vec<_>>())
+            .unwrap_or_else(|e| { error!("Failed to query balance logs: {}", e); vec![] })
     }
 }
