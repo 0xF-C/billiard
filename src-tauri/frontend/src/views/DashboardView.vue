@@ -308,7 +308,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElIcon, ElDialog, ElButton, ElSelect, ElOption, ElDivider, ElInput } from 'element-plus'
 import { Grid, User, Money, Clock, Location, Warning, TrendCharts, DataLine, Timer, Search, Goods, Plus, More, Printer, Coin, ChatDotRound, Wallet, ShoppingCart, Minus, Delete, CircleClose } from '@element-plus/icons-vue'
-import { getRevenueTrend, getTableUsage, getHourlyRevenue, getTables, getAreas, getMembers, getOrderByTable, closeTable, getSettings, checkExpiredPackages, autoCloseExpired, autoCloseExhausted, getInventory, saleBatch, cancelOrder, realtimeCheck, printReceipt as apiPrintReceipt } from '../api'
+import { getRevenueTrend, getTableUsage, getHourlyRevenue, getTables, getAreas, getMembers, getOrderByTable, closeTable, getSettings, checkExpiredPackages, autoCloseExpired, autoCloseExhausted, getInventory, saleBatch, cancelOrder, realtimeCheck, printReceipt as apiPrintReceipt, processBillingTicks } from '../api'
 import { t, currentLang } from '../i18n'
 import OpenTableDialog from '../components/OpenTableDialog.vue'
 
@@ -850,6 +850,8 @@ const checkExpiredOrders = async () => {
   }
 }
 
+let billingTickTimer = null
+
 const startRealtimeTimer = () => {
   clearInterval(realtimeTimer)
   const intervalMs = (autoCloseInterval.value || 10) * 60 * 1000
@@ -867,12 +869,34 @@ const startRealtimeTimer = () => {
   }, intervalMs)
 }
 
+// 先付后玩：每分钟执行一次计费tick（后端判断是否到计费间隔）
+const runBillingTick = async () => {
+  try {
+    const results = await processBillingTicks()
+    if (!results || results.length === 0) return
+    const autoClosed = results.filter(r => r.auto_closed)
+    const ticked = results.filter(r => !r.auto_closed)
+    if (ticked.length > 0) {
+      // 静默更新，不打扰，只刷新桌台状态
+      tables.value = await getTables(true).catch(() => tables.value)
+    }
+    if (autoClosed.length > 0) {
+      ElMessage.warning(`余额耗尽自动关台: ${autoClosed.map(r => r.table_name).join('、')}`)
+      load()
+    }
+  } catch {}
+}
+
 onMounted(async () => {
   await load()
   timer = setInterval(load, 60000)
   startRealtimeTimer()
+  // 每60秒触发一次计费tick检查（后端判断是否达到间隔）
+  billingTickTimer = setInterval(runBillingTick, 60000)
+  // 立即执行一次，防止刚开台就要等1分钟
+  runBillingTick()
 })
-onUnmounted(() => { clearInterval(timer); clearInterval(realtimeTimer) })
+onUnmounted(() => { clearInterval(timer); clearInterval(realtimeTimer); clearInterval(billingTickTimer) })
 </script>
 
 <style scoped>

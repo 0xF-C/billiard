@@ -3,6 +3,18 @@
     <div class="page-header">
       <h1 class="page-title">{{ t('areaOverview') }}</h1>
       <div class="header-right">
+        <!-- 计费间隔快速修改 -->
+        <div class="billing-interval-ctrl" @click.stop>
+          <span class="interval-label">计费间隔</span>
+          <el-input-number
+            v-model="localBillingInterval"
+            :min="5" :max="120" :step="5"
+            size="small"
+            style="width: 100px"
+            @change="saveBillingInterval"
+          />
+          <span class="interval-unit">分钟</span>
+        </div>
         <el-select v-model="selectedArea" :placeholder="t('areaOverview')" clearable class="area-select">
           <el-option :value="null" :label="t('allAreas')" />
           <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
@@ -70,6 +82,13 @@
             </div>
             <div v-if="table.status === '使用中'" class="table-cost" :class="getCostClass(table.id)">
               ¥{{ calcCurrentCost(table) }}
+            </div>
+            <!-- 实时余额：显示会员余额或散客押金剩余 -->
+            <div v-if="table.status === '使用中' && getBillingStatus(table.id)" class="table-balance-row">
+              <span class="balance-label">剩余</span>
+              <span class="balance-value" :class="getBalanceClass(table.id)">
+                ¥{{ getAvailableBalance(table.id) }}
+              </span>
             </div>
             <div v-if="table.status === '使用中' && getBillingStatus(table.id)" class="table-remaining"
                  :class="'remaining-' + getBillingStatus(table.id)?.warning_level">
@@ -272,9 +291,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-import { ElMessage, ElMessageBox, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElInput } from 'element-plus'
+import { ElMessage, ElMessageBox, ElButton, ElSelect, ElOption, ElDialog, ElTag, ElIcon, ElDivider, ElInput, ElInputNumber } from 'element-plus'
 import { Refresh, Grid, CircleCheckFilled, Timer, Tools, Location, Warning, Check, User, Clock, Money, CircleClose, Ticket, Printer } from '@element-plus/icons-vue'
-import { getTables, getAreas, getMembers, getOrderByTable, closeTable, cancelOrder, checkExpiredPackages, autoCloseExpired, printReceipt as apiPrintReceipt, getSettings, getRealtimeBillingStatus, autoCloseExhausted } from '../api'
+import { getTables, getAreas, getMembers, getOrderByTable, closeTable, cancelOrder, checkExpiredPackages, autoCloseExpired, printReceipt as apiPrintReceipt, getSettings, saveSettings, getRealtimeBillingStatus, autoCloseExhausted } from '../api'
 import { t, currentLang } from '../i18n'
 import OpenTableDialog from '../components/OpenTableDialog.vue'
 
@@ -291,6 +310,7 @@ const pay = ref({ total: 0, discount: 0, final: 0, deposit: 0, change: 0 })
 const submitting = ref(false)
 const billingStatuses = ref([])
 const autoCloseInterval = ref(10) // 分钟，默认10分钟
+const localBillingInterval = ref(30) // 计费间隔（分钟），可前端直接修改
 const alertedOrders = ref(new Set()) // 已弹过预警的订单，防止重复弹框
 
 const paymentMethods = [
@@ -415,6 +435,7 @@ const loadData = async () => {
       billingRules.value.freeMinutes = settings.billingRules.freeMinutes ?? 5
       billingRules.value.billingInterval = settings.billingRules.billingInterval ?? 30
       billingRules.value.applyRounding = settings.billingRules.applyRounding ?? true
+      localBillingInterval.value = billingRules.value.billingInterval
     }
   } catch (e) { console.error(e) }
 }
@@ -438,6 +459,35 @@ const getCostClass = (tableId) => {
   if (s.warning_level === 'exhausted' || s.warning_level === 'critical') return 'cost-warning'
   if (s.warning_level === 'low') return 'cost-low'
   return ''
+}
+
+// 实时余额：会员显示 member_balance，散客显示 deposit（已被tick扣减）
+const getAvailableBalance = (tableId) => {
+  const s = getBillingStatus(tableId)
+  if (!s) return '0.00'
+  return s.available !== undefined ? s.available.toFixed(2) : s.member_balance?.toFixed(2) || s.deposit?.toFixed(2) || '0.00'
+}
+
+const getBalanceClass = (tableId) => {
+  const s = getBillingStatus(tableId)
+  if (!s) return ''
+  if (s.warning_level === 'exhausted') return 'balance-exhausted'
+  if (s.warning_level === 'critical') return 'balance-critical'
+  if (s.warning_level === 'low') return 'balance-low'
+  return 'balance-ok'
+}
+
+// 保存计费间隔到settings
+const saveBillingInterval = async (val) => {
+  try {
+    const settings = await getSettings()
+    if (!settings.billingRules) settings.billingRules = {}
+    settings.billingRules.billingInterval = val
+    await saveSettings(settings)
+    ElMessage.success(`计费间隔已更新为 ${val} 分钟`)
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
 }
 
 // 拉取实时计费状态并处理预警/自动关台
@@ -776,6 +826,20 @@ onMounted(async () => {
 .remaining-low { color: var(--accent-warning); background: rgba(210,153,34,0.12); }
 .remaining-critical { color: #ff5722; background: rgba(255,87,34,0.15); }
 .remaining-exhausted { color: #fff; background: var(--accent-danger); }
+
+/* 实时余额展示 */
+.table-balance-row { display: flex; align-items: center; gap: 3px; margin-top: 2px; }
+.balance-label { font-size: 9px; color: var(--text-tertiary); }
+.balance-value { font-size: 10px; font-weight: 700; font-family: var(--font-mono); }
+.balance-ok { color: var(--accent-success); }
+.balance-low { color: var(--accent-warning); }
+.balance-critical { color: #ff5722; animation: pulse 1.5s infinite; }
+.balance-exhausted { color: var(--accent-danger); animation: pulse 1s infinite; }
+
+/* 计费间隔控件 */
+.billing-interval-ctrl { display: flex; align-items: center; gap: 6px; }
+.interval-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.interval-unit { font-size: 12px; color: var(--text-tertiary); }
 
 .timer-critical { color: #ff5722; }
 .timer-low { color: var(--accent-warning); }

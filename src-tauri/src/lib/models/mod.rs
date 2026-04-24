@@ -61,6 +61,10 @@ pub struct Order {
     pub refund_method: Option<String>,
     pub payment_method: Option<String>,
     pub deposit_change: f64,
+    /// 已通过计费tick实时扣除的累计金额
+    pub billed_amount: f64,
+    /// 上次计费tick的时间戳
+    pub last_billed_at: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

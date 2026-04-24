@@ -18,15 +18,16 @@ pub fn get_order_by_id(order_id: i64) -> Result<Order, String> {
 
 fn get_order_by_id_locked(conn: &Connection, order_id: i64) -> Result<Order, String> {
     conn.query_row(
-        "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'), 
+        "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'),
                 o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                 o.total_amount, o.discount_amount, o.deposit, o.deposit_payment_method, o.change_amount, o.final_amount, o.status,
                 o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
                 o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
-                COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0)
-         FROM orders o 
-         LEFT JOIN tables t ON o.table_id = t.id 
-         LEFT JOIN members m ON o.member_id = m.id 
+                COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0),
+                COALESCE(o.billed_amount, 0), o.last_billed_at
+         FROM orders o
+         LEFT JOIN tables t ON o.table_id = t.id
+         LEFT JOIN members m ON o.member_id = m.id
          WHERE o.id = ?1",
         params![order_id],
         |row| {
@@ -59,6 +60,8 @@ fn get_order_by_id_locked(conn: &Connection, order_id: i64) -> Result<Order, Str
                 refund_method: row.get(25)?,
                 payment_method: row.get(26)?,
                 deposit_change: row.get(27)?,
+                billed_amount: row.get(28)?,
+                last_billed_at: row.get(29)?,
             })
         },
     ).map_err(|e| e.to_string())
@@ -66,15 +69,16 @@ fn get_order_by_id_locked(conn: &Connection, order_id: i64) -> Result<Order, Str
 
 fn get_order_by_id_tx(tx: &rusqlite::Transaction, order_id: i64) -> Result<Order, String> {
     tx.query_row(
-        "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'), 
+        "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'),
                 o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                 o.total_amount, o.discount_amount, o.deposit, o.deposit_payment_method, o.change_amount, o.final_amount, o.status,
                 o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
                 o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
-                COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0)
-         FROM orders o 
-         LEFT JOIN tables t ON o.table_id = t.id 
-         LEFT JOIN members m ON o.member_id = m.id 
+                COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0),
+                COALESCE(o.billed_amount, 0), o.last_billed_at
+         FROM orders o
+         LEFT JOIN tables t ON o.table_id = t.id
+         LEFT JOIN members m ON o.member_id = m.id
          WHERE o.id = ?1",
         params![order_id],
         |row| {
@@ -107,6 +111,8 @@ fn get_order_by_id_tx(tx: &rusqlite::Transaction, order_id: i64) -> Result<Order
                 refund_method: row.get(25)?,
                 payment_method: row.get(26)?,
                 deposit_change: row.get(27)?,
+                billed_amount: row.get(28)?,
+                last_billed_at: row.get(29)?,
             })
         },
     ).map_err(|e| e.to_string())
@@ -114,11 +120,19 @@ fn get_order_by_id_tx(tx: &rusqlite::Transaction, order_id: i64) -> Result<Order
 
 pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
     validate_open_table_request(&req).map_err(|e| e.to_string())?;
-    
+
+    let settings = load_settings();
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
+    // 一个计费间隔的最低预付金额（先付后玩：开台前必须有足够余额支付至少一个周期）
+    let interval_min_cost_factor = billing_params.billing_interval.max(1) as f64 / 60.0;
+
     let order_id: i64;
 
     let (package_name, package_price, package_hours) = if let Some(pid) = req.package_id {
-        let settings = load_settings();
         if let Some(pkg) = settings.packages.iter().find(|p| p.id == pid as i32) {
             (Some(pkg.name.clone()), Some(pkg.price), Some(pkg.hours))
         } else {
@@ -133,11 +147,7 @@ pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
         let tx = conn.transaction().map_err(|e| format!("Transaction failed: {}", e))?;
 
         let status: String = tx
-            .query_row(
-                "SELECT status FROM tables WHERE id = ?1",
-                params![req.table_id],
-                |r| r.get(0),
-            )
+            .query_row("SELECT status FROM tables WHERE id = ?1", params![req.table_id], |r| r.get(0))
             .map_err(|_| "球桌不存在")?;
 
         if status != "空闲" {
@@ -145,78 +155,37 @@ pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
             return Err(format!("球桌当前状态: {}，无法开台", status));
         }
 
+        let hourly_rate: f64 = tx.query_row(
+            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+             FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
+            params![req.table_id], |r| r.get(0),
+        ).unwrap_or(30.0);
+
+        // 先付后玩：计算最低需要的预付金额
+        let min_prepay = if package_price.is_some() {
+            // 套餐模式：需要支付套餐全价
+            package_price.unwrap_or(0.0)
+        } else {
+            // 按时计费：至少需要一个计费间隔的费用
+            round_to_two(interval_min_cost_factor * hourly_rate)
+        };
+
         if let Some(member_id) = req.member_id {
             let balance: f64 = tx
                 .query_row("SELECT balance FROM members WHERE id = ?1", params![member_id], |r| r.get(0))
                 .unwrap_or(0.0);
-            // P1 #3 修复: 余额 < 0 才报错，余额为 0 时可开台（需交押金）
-            if balance < 0.0 {
+
+            let total_available = balance + req.deposit.unwrap_or(0.0);
+            if total_available < min_prepay {
                 tx.rollback().ok();
-                return Err("会员余额不足，无法开台".to_string());
-            }
-            // 套餐模式: 检查余额是否足够支付套餐价格
-            if let Some(price) = package_price {
-                if balance < price {
-                    tx.rollback().ok();
-                    return Err(format!("套餐价格 ¥{:.2}，会员余额不足", price));
-                }
-                // P3 #20 修复: 检查套餐价格是否低于预估消费，提醒用户
-                if let Some(hours) = package_hours {
-                    let hourly_rate: f64 = tx
-                        .query_row(
-                            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
-                             FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
-                            params![req.table_id],
-                            |r| r.get(0),
-                        )
-                        .unwrap_or(30.0);
-                    let estimated = hours * hourly_rate;
-                    if price < estimated {
-                        // 只记录日志，不阻止开台
-                        log::info!("套餐价格 ¥{:.2} 低于预估消费 ¥{:.2}", price, estimated);
-                    }
-                }
-            } else {
-                // 非套餐模式: 检查余额 + 押金是否足够支付最低消费预估
-                let min_hours: i32 = tx
-                    .query_row("SELECT min_hours FROM tables WHERE id = ?1", params![req.table_id], |r| r.get(0))
-                    .unwrap_or(0);
-                if min_hours > 0 {
-                    let hourly_rate: f64 = tx
-                        .query_row(
-                            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
-                             FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
-                            params![req.table_id],
-                            |r| r.get(0),
-                        )
-                        .unwrap_or(30.0);
-                    let min_amount = (min_hours as f64) * hourly_rate;
-                    let available = balance + req.deposit.unwrap_or(0.0);
-                    if available < min_amount {
-                        tx.rollback().ok();
-                        return Err(format!("预估最低消费 ¥{:.2}，余额+押金不足", min_amount));
-                    }
-                }
+                return Err(format!("先付后玩：需至少 ¥{:.2}（余额 ¥{:.2}+押金 ¥{:.2}），请先充值", min_prepay, balance, req.deposit.unwrap_or(0.0)));
             }
         } else {
-            let min_hours: i32 = tx
-                .query_row("SELECT min_hours FROM tables WHERE id = ?1", params![req.table_id], |r| r.get(0))
-                .unwrap_or(0);
-            if min_hours > 0 {
-                let hourly_rate: f64 = tx
-                    .query_row(
-                        "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
-                         FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
-                        params![req.table_id],
-                        |r| r.get(0),
-                    )
-                    .unwrap_or(30.0);
-                let min_amount = (min_hours as f64) * hourly_rate;
-                let deposit = req.deposit.unwrap_or(0.0);
-                if deposit < min_amount {
-                    tx.rollback().ok();
-                    return Err(format!("最低消费 ¥{:.2}，押金不足", min_amount));
-                }
+            // 散客：押金必须 >= 最低预付
+            let deposit = req.deposit.unwrap_or(0.0);
+            if deposit < min_prepay {
+                tx.rollback().ok();
+                return Err(format!("先付后玩：散客押金需至少 ¥{:.2}，当前 ¥{:.2}", min_prepay, deposit));
             }
         }
 
@@ -372,11 +341,11 @@ pub fn close_order(order_id: i64, req: CloseTableRequest) -> Result<Order, Strin
 
 fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTableRequest, member_day_discount: i32, billing_params: &BillingParams) -> Result<Order, String> {
 
-    let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>) = tx
+    let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours, billed_amount): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>, f64) = tx
         .query_row(
-            "SELECT table_id, member_id, start_time, deposit, package_id, package_price, package_hours FROM orders WHERE id = ?1 AND status = '进行中'",
+            "SELECT table_id, member_id, start_time, deposit, package_id, package_price, package_hours, COALESCE(billed_amount, 0) FROM orders WHERE id = ?1 AND status = '进行中'",
             params![order_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?)),
         )
         .map_err(|_| "订单不存在或已结账")?;
 
@@ -415,14 +384,8 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
 
     if let Some(mid) = member_id {
         let member_discount: f64 = tx
-            .query_row(
-                "SELECT discount FROM members WHERE id = ?1",
-                params![mid],
-                |r| r.get(0),
-            )
+            .query_row("SELECT discount FROM members WHERE id = ?1", params![mid], |r| r.get(0))
             .unwrap_or(1.0);
-
-        // P1 #2 + P1 #12 修复: 取更优策略 + 折扣限制
         let effective_member_discount = member_discount.clamp(0.05, 1.0);
         let member_day_factor = 1.0 - (member_day_discount as f64 / 100.0);
         let final_factor = effective_member_discount.min(member_day_factor).max(0.05).min(1.0);
@@ -430,22 +393,32 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
     }
 
     let final_amount = (total - discount).max(0.0);
-    let change_amount = if deposit > final_amount { deposit - final_amount } else { 0.0 };
-    // P0 #1 修复: final_amount 存应收总额 (total - discount)，paid_amount 存实收净额
-    let paid_amount = (final_amount - deposit).max(0.0);
-    let deposit_change = if deposit > final_amount { deposit - final_amount } else { 0.0 };
 
+    // 先付后玩：结算时扣除已通过billing_tick预扣的金额，避免重复扣费
+    // remaining_to_charge = 应收总额 - 已扣金额（可为0，不退款）
+    let already_billed = billed_amount.min(final_amount); // 不能超过应收
+    let remaining_charge = (final_amount - already_billed).max(0.0);
+
+    // 对于散客：deposit已被billing_tick扣减，这里用更新后的deposit
+    // 对于会员：balance已被billing_tick扣减，remaining_charge是剩余尾款
+    let effective_deposit = deposit; // billing_tick 已直接修改 deposit（散客）或 balance（会员）
+    let change_amount = if effective_deposit > remaining_charge { effective_deposit - remaining_charge } else { 0.0 };
+    let paid_amount = (remaining_charge - effective_deposit).max(0.0);
+    let deposit_change = change_amount;
+
+    // 先付后玩：结算时只扣remaining_charge（billing_tick已扣过的不重复扣）
     let mut balance_paid = 0.0;
     if let Some(mid) = member_id {
-        let member_balance: f64 = tx
-            .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
-            .unwrap_or(0.0);
-        balance_paid = member_balance.max(0.0).min(paid_amount);
+        if remaining_charge > 0.0 {
+            let member_balance: f64 = tx
+                .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
+                .unwrap_or(0.0);
+            balance_paid = member_balance.max(0.0).min(remaining_charge);
+        }
     }
 
     if balance_paid > 0.0 {
         if let Some(mid) = member_id {
-            // P0 #4 修复: 先读取 balance_before，再 UPDATE，再计算 balance_after
             let balance_before: f64 = tx
                 .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
                 .unwrap_or(0.0);
@@ -459,12 +432,15 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
                  VALUES (?1, ?2, ?3, ?4, ?5, 'order', ?6)",
                 params![mid, order_id, -balance_paid, balance_before, balance_after, &payment_method],
             ).ok();
-            // P1 #10 修复: total_spent 累加实际消费总额 (final_amount)，而非仅余额扣减部分
-            tx.execute(
-                "UPDATE members SET total_spent = total_spent + ?1 WHERE id = ?2",
-                params![final_amount, mid],
-            ).ok();
         }
+    }
+
+    // total_spent 累加实际消费总额
+    if let Some(mid) = member_id {
+        tx.execute(
+            "UPDATE members SET total_spent = total_spent + ?1 WHERE id = ?2",
+            params![final_amount, mid],
+        ).ok();
     }
 
     let now_str = now.to_rfc3339();
@@ -1218,4 +1194,231 @@ pub struct AutoCloseResult {
     pub reason: String,
     pub total_amount: f64,
     pub available_amount: f64,
+}
+
+/// 单次计费tick的结果
+#[derive(Debug, serde::Serialize, Clone)]
+pub struct BillingTickResult {
+    pub order_id: i64,
+    pub table_name: String,
+    pub tick_amount: f64,
+    /// 剩余可用金额（扣费后）
+    pub remaining: f64,
+    /// 是否已自动关台（余额耗尽）
+    pub auto_closed: bool,
+}
+
+/// 先付后玩: 按计费间隔对所有进行中订单执行实时扣费。
+/// 每次被前端轮询调用（建议1分钟一次），内部判断每张桌是否到了下一个计费周期。
+/// - 会员: 直接扣减 members.balance
+/// - 散客: 扣减 orders.deposit（deposit作为预付款，消耗完自动关台）
+/// - 余额/押金耗尽时自动关台
+pub fn process_billing_ticks() -> Vec<BillingTickResult> {
+    let settings = load_settings();
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
+    let interval_mins = billing_params.billing_interval.max(1) as i64;
+    let tick_amount_base = (interval_mins as f64 / 60.0); // 单位小时
+    let member_day_discount = get_member_day_discount();
+
+    // 读取所有进行中的订单
+    let orders_data: Vec<(i64, i64, String, Option<i64>, f64, Option<i64>, Option<f64>, Option<f64>, String, Option<String>)> = {
+        let conn = DB.lock();
+        let mut stmt = match conn.prepare(
+            "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, o.deposit,
+                    o.package_id, o.package_price, o.package_hours, o.start_time, o.last_billed_at
+             FROM orders o LEFT JOIN tables t ON o.table_id = t.id
+             WHERE o.status = '进行中'"
+        ) {
+            Ok(s) => s,
+            Err(_) => return vec![],
+        };
+        match stmt.query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
+                row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?))
+        }) {
+            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
+            Err(_) => return vec![],
+        }
+    };
+
+    let mut results = vec![];
+
+    for (order_id, table_id, table_name, member_id, deposit,
+         pkg_id, pkg_price, pkg_hours, start_time, last_billed_at) in orders_data
+    {
+        let start = match DateTime::parse_from_rfc3339(&start_time) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let now = chrono::Utc::now();
+        let total_elapsed_mins = (now - start.with_timezone(&Utc)).num_minutes();
+
+        // 上次扣费时间（没有则用 start + free_minutes）
+        let last_billed_ts = last_billed_at.as_deref()
+            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+            .map(|t| t.with_timezone(&Utc))
+            .unwrap_or_else(|| {
+                start.with_timezone(&Utc) + chrono::Duration::minutes(billing_params.free_minutes as i64)
+            });
+
+        let mins_since_last = (now - last_billed_ts).num_minutes();
+
+        // 还没到下一个计费周期
+        if mins_since_last < interval_mins {
+            continue;
+        }
+
+        // 套餐模式：套餐内不计时，超时才按interval扣费
+        if pkg_id.is_some() {
+            if let (Some(hours), Some(_price)) = (pkg_hours, pkg_price) {
+                let pkg_mins = (hours * 60.0) as i64;
+                if total_elapsed_mins <= pkg_mins {
+                    // 套餐时间内，不扣费，但更新 last_billed_at 防止套餐结束后一次扣多个tick
+                    let now_str = now.to_rfc3339();
+                    let conn = DB.lock();
+                    conn.execute("UPDATE orders SET last_billed_at = ?1 WHERE id = ?2",
+                        params![now_str, order_id]).ok();
+                    continue;
+                }
+            }
+        }
+
+        // 获取费率和会员折扣
+        let (hourly_rate, member_discount_val, member_balance) = {
+            let conn = DB.lock();
+            let rate: f64 = conn.query_row(
+                "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
+                 FROM tables t LEFT JOIN areas a ON t.area_id = a.id WHERE t.id = ?1",
+                params![table_id], |r| r.get(0),
+            ).unwrap_or(30.0);
+            let (disc, bal) = if let Some(mid) = member_id {
+                let d: f64 = conn.query_row("SELECT discount FROM members WHERE id = ?1", params![mid], |r| r.get(0)).unwrap_or(1.0);
+                let b: f64 = conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0)).unwrap_or(0.0);
+                (d, b)
+            } else {
+                (1.0, 0.0)
+            };
+            (rate, disc, bal)
+        };
+
+        // 计算本次tick扣费金额（一个计费间隔的费用）
+        let base_tick = tick_amount_base * hourly_rate;
+        let tick_cost = if member_id.is_some() && member_discount_val < 1.0 {
+            let effective = member_discount_val.clamp(0.05, 1.0);
+            let day_factor = 1.0 - (member_day_discount as f64 / 100.0);
+            let final_factor = effective.min(day_factor).max(0.05).min(1.0);
+            round_to_two(base_tick * final_factor)
+        } else {
+            round_to_two(base_tick)
+        };
+
+        // 可用金额判断
+        let available = if member_id.is_some() { member_balance } else { deposit };
+        let remaining_after = available - tick_cost;
+        let now_str = now.to_rfc3339();
+
+        if remaining_after >= 0.0 {
+            // 正常扣费
+            let deduct_ok = if let Some(mid) = member_id {
+                let conn = DB.lock();
+                let balance_before: f64 = conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0)).unwrap_or(0.0);
+                let ok1 = conn.execute("UPDATE members SET balance = balance - ?1 WHERE id = ?2", params![tick_cost, mid]).is_ok();
+                let balance_after = balance_before - tick_cost;
+                conn.execute(
+                    "INSERT INTO balance_logs (member_id, order_id, amount, balance_before, balance_after, reason, payment_method) VALUES (?1, ?2, ?3, ?4, ?5, 'billing_tick', 'balance')",
+                    params![mid, order_id, -tick_cost, balance_before, balance_after],
+                ).ok();
+                ok1
+            } else {
+                // 散客: 从押金中扣，记录在order上
+                let conn = DB.lock();
+                conn.execute("UPDATE orders SET deposit = deposit - ?1 WHERE id = ?2", params![tick_cost, order_id]).is_ok()
+            };
+
+            if deduct_ok {
+                let conn = DB.lock();
+                conn.execute(
+                    "UPDATE orders SET billed_amount = billed_amount + ?1, last_billed_at = ?2 WHERE id = ?3",
+                    params![tick_cost, now_str, order_id],
+                ).ok();
+                info!("[BillingTick] Order {} ticked ¥{:.2}, remaining ¥{:.2}", order_id, tick_cost, remaining_after);
+                results.push(BillingTickResult {
+                    order_id,
+                    table_name,
+                    tick_amount: tick_cost,
+                    remaining: round_to_two(remaining_after),
+                    auto_closed: false,
+                });
+            }
+        } else {
+            // 余额耗尽，扣尽剩余后关台
+            if let Some(mid) = member_id {
+                if member_balance > 0.0 {
+                    let conn = DB.lock();
+                    let balance_before = member_balance;
+                    conn.execute("UPDATE members SET balance = 0 WHERE id = ?1", params![mid]).ok();
+                    conn.execute(
+                        "INSERT INTO balance_logs (member_id, order_id, amount, balance_before, balance_after, reason, payment_method) VALUES (?1, ?2, ?3, ?4, 0, 'billing_tick', 'balance')",
+                        params![mid, order_id, -member_balance, balance_before],
+                    ).ok();
+                    conn.execute(
+                        "UPDATE orders SET billed_amount = billed_amount + ?1, last_billed_at = ?2 WHERE id = ?3",
+                        params![member_balance, now_str, order_id],
+                    ).ok();
+                }
+            } else if deposit > 0.0 {
+                let conn = DB.lock();
+                conn.execute("UPDATE orders SET deposit = 0, billed_amount = billed_amount + ?1, last_billed_at = ?2 WHERE id = ?3",
+                    params![deposit, now_str, order_id]).ok();
+            }
+
+            // 触发关台
+            let close_req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
+            let close_result = {
+                let mut conn = DB.lock();
+                match conn.transaction() {
+                    Ok(tx) => {
+                        match close_order_with_tx(&tx, order_id, close_req, member_day_discount, &billing_params) {
+                            Ok(order) => {
+                                if tx.commit().is_ok() {
+                                    Ok(order)
+                                } else {
+                                    Err("commit failed".to_string())
+                                }
+                            }
+                            Err(e) => { tx.rollback().ok(); Err(e) }
+                        }
+                    }
+                    Err(e) => Err(e.to_string()),
+                }
+            };
+
+            match close_result {
+                Ok(order) => {
+                    info!("[BillingTick] Order {} auto-closed: balance exhausted", order_id);
+                    results.push(BillingTickResult {
+                        order_id,
+                        table_name: order.table_name.clone().unwrap_or_default(),
+                        tick_amount: 0.0,
+                        remaining: 0.0,
+                        auto_closed: true,
+                    });
+                    std::thread::spawn(move || {
+                        if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| auto_print_receipt(&order))) {
+                            error!("Auto-print panic for billing-tick close order {}: {:?}", order.id, e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    warn!("[BillingTick] Failed to auto-close order {}: {}", order_id, e);
+                }
+            }
+        }
+    }
+
+    results
 }

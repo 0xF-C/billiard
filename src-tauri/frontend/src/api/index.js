@@ -287,6 +287,9 @@ export const autoCloseExhausted = () =>
 export const getRealtimeBillingStatus = () =>
   invoke("cmd_get_realtime_billing_status", { token: authToken }).catch((err) => handleError(err, "实时计费状态"));
 
+export const processBillingTicks = () =>
+  invoke("cmd_process_billing_ticks", { token: authToken }).catch((err) => handleError(err, "实时扣费tick"));
+
 export const getDbPath = () =>
   invoke("cmd_get_db_path").catch(() => "未知");
 
