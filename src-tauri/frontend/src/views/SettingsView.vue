@@ -7,16 +7,6 @@
     <div class="settings-section">
       <h3 class="section-title">{{ t('printSettings') }}</h3>
       <div class="settings-grid">
-        <div class="setting-card" @click="$router.push('/table-rate')">
-          <div class="setting-icon">
-            <el-icon><PriceTag /></el-icon>
-          </div>
-          <div class="setting-body">
-            <span class="setting-name">{{ t('pricingRules') }}</span>
-            <span class="setting-desc">{{ t('rateSettings') }} - {{ t('tableRate') }}</span>
-          </div>
-          <el-icon class="arrow"><ArrowRight /></el-icon>
-        </div>
         <div class="setting-card" @click="showPrinterDlg = true; loadPrinters()">
           <div class="setting-icon">
             <el-icon><Printer /></el-icon>
