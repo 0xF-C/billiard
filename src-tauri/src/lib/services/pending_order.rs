@@ -13,7 +13,8 @@ pub fn get_pending_orders() -> Vec<PendingOrder> {
 
 pub fn create_pending_order(req: CreatePendingOrderRequest) -> Result<PendingOrder, String> {
     let conn = DB.lock();
-    let order_no = format!("P{:06}", conn.last_insert_rowid() + 1000);
+    // P3 #21 修复: 使用 UUID 避免 order_no 碰撞风险
+    let order_no = format!("P{}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>().to_uppercase());
     conn.execute("INSERT INTO pending_orders (order_no, table_id, customer_name, customer_phone, estimated_amount, remark, status, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending', datetime('now'))",
         params![order_no, req.table_id, req.customer_name, req.customer_phone, req.estimated_amount, req.remark]).map_err(|e| e.to_string())?;
     let id = conn.last_insert_rowid();
@@ -29,9 +30,10 @@ pub fn cancel_pending_order(id: i64) -> Result<(), String> {
 
 pub fn resume_pending_order(id: i64) -> Result<PendingOrder, String> {
     let conn = DB.lock();
-    conn.execute("UPDATE pending_orders SET status = 'pending' WHERE id = ?1 AND status = 'suspended'", params![id]).map_err(|e| e.to_string())?;
+    // P3 #22 修复: 支持恢复 cancelled 状态的挂单（而非仅支持不存在的 suspended 状态）
+    conn.execute("UPDATE pending_orders SET status = 'pending' WHERE id = ?1 AND status IN ('cancelled', 'suspended')", params![id]).map_err(|e| e.to_string())?;
     let rows_affected = conn.changes();
-    if rows_affected == 0 { return Err("挂单不存在或已恢复".to_string()); }
+    if rows_affected == 0 { return Err("挂单不存在或状态不允许恢复".to_string()); }
     let order = conn.query_row("SELECT p.id, p.order_no, p.table_id, t.name, p.customer_name, p.customer_phone, p.estimated_amount, p.remark, p.status, p.created_at FROM pending_orders p LEFT JOIN tables t ON p.table_id = t.id WHERE p.id = ?1", params![id], |row| Ok(PendingOrder {
         id: row.get(0)?, order_no: row.get(1)?, table_id: row.get(2)?, table_name: row.get(3).unwrap_or_default(),
         customer_name: row.get(4)?, customer_phone: row.get(5)?, estimated_amount: row.get(6).unwrap_or(0.0),

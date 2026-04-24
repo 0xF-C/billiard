@@ -328,9 +328,10 @@ pub fn close_order(order_id: i64, req: CloseTableRequest) -> Result<Order, Strin
     );
     
     let mut conn = DB.lock();
+    // P2 #18 修复: 直接创建事务并调用 close_order_with_tx
     let tx = conn.transaction().map_err(|e| format!("Transaction failed: {}", e))?;
     
-    let result = close_order_with_conn(&tx, order_id, req, member_day_discount, &billing_params);
+    let result = close_order_with_tx(&tx, order_id, req, member_day_discount, &billing_params);
     
     if result.is_ok() {
         if let Err(e) = tx.commit() {
@@ -351,147 +352,6 @@ pub fn close_order(order_id: i64, req: CloseTableRequest) -> Result<Order, Strin
     }
     
     result
-}
-
-fn close_order_with_conn(conn: &Connection, order_id: i64, req: CloseTableRequest, member_day_discount: i32, billing_params: &BillingParams) -> Result<Order, String> {
-
-    let (table_id, member_id, start_time, deposit, package_id, package_price, package_hours): (i64, Option<i64>, String, f64, Option<i64>, Option<f64>, Option<f64>) = conn
-        .query_row(
-            "SELECT table_id, member_id, start_time, deposit, package_id, package_price, package_hours FROM orders WHERE id = ?1 AND status = '进行中'",
-            params![order_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
-        )
-        .map_err(|_| "订单不存在或已结账")?;
-
-    let hourly_rate: f64 = conn
-        .query_row(
-            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
-             FROM tables t LEFT JOIN areas a ON t.area_id = a.id
-             WHERE t.id = ?1",
-            params![table_id],
-            |r| r.get(0),
-        )
-        .unwrap_or(30.0);
-
-    let start = DateTime::parse_from_rfc3339(&start_time).map_err(|e| format!("时间解析失败: {}", e))?;
-    let now = chrono::Utc::now();
-    let duration = (now - start.with_timezone(&Utc)).num_minutes().max(1);
-    let bill_min = calc_bill_minutes_with_params(duration, &billing_params);
-
-    let mut total = 0.0;
-    if let (Some(_), Some(price), Some(hours)) = (package_id, package_price, package_hours) {
-        total = price;
-        let pkg_duration = (hours * 60.0) as i64;
-        if duration > pkg_duration {
-            let extra_mins = duration - pkg_duration;
-            let extra_params = BillingParams::new(0, billing_params.billing_interval, billing_params.apply_rounding);
-            let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &extra_params);
-            total += extra_fee;
-        }
-    }
-    if total == 0.0 {
-        total = (bill_min as f64 / 60.0) * hourly_rate;
-    }
-
-    let mut discount = 0.0;
-    let payment_method = req.payment_method.unwrap_or_else(|| "cash".to_string());
-
-    if let Some(mid) = member_id {
-        let member_discount: f64 = conn
-            .query_row(
-                "SELECT discount FROM members WHERE id = ?1",
-                params![mid],
-                |r| r.get(0),
-            )
-            .unwrap_or(1.0);
-
-        // P1 #2 + P1 #12 修复: 
-        // 1. 折扣率限制为 (0.05, 1.0]，防止 discount=0 导致完全免费
-        // 2. 会员折扣和会员日折扣采用"取更优"策略（取较低折扣因子），而非叠乘
-        // 3. 添加最低折扣限制（最低5折）
-        let effective_member_discount = member_discount.clamp(0.05, 1.0);
-        let member_day_factor = 1.0 - (member_day_discount as f64 / 100.0);
-        let final_factor = effective_member_discount.min(member_day_factor).max(0.05).min(1.0);
-        discount = total * (1.0 - final_factor);
-    }
-
-    let final_amount = (total - discount).max(0.0);
-    let change_amount = if deposit > final_amount { deposit - final_amount } else { 0.0 };
-    // P0 #1 修复: final_amount 存应收总额 (total - discount)，paid_amount 存实收净额
-    let paid_amount = (final_amount - deposit).max(0.0);
-    let deposit_change = if deposit > final_amount { deposit - final_amount } else { 0.0 };
-
-    let mut balance_paid = 0.0;
-    if let Some(mid) = member_id {
-        let member_balance: f64 = conn
-            .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
-            .unwrap_or(0.0);
-        balance_paid = member_balance.max(0.0).min(paid_amount);
-    }
-
-    if balance_paid > 0.0 {
-        if let Some(mid) = member_id {
-            // P0 #4 修复: 先读取 balance_before，再 UPDATE，再计算 balance_after
-            let balance_before: f64 = conn
-                .query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0))
-                .unwrap_or(0.0);
-            conn.execute(
-                "UPDATE members SET balance = balance - ?1 WHERE id = ?2",
-                params![balance_paid, mid],
-            ).map_err(|e| format!("扣减余额失败: {}", e))?;
-            let balance_after = balance_before - balance_paid;
-            conn.execute(
-                "INSERT INTO balance_logs (member_id, order_id, amount, balance_before, balance_after, reason, payment_method)
-                 VALUES (?1, ?2, ?3, ?4, ?5, 'order', ?6)",
-                params![mid, order_id, -balance_paid, balance_before, balance_after, &payment_method],
-            ).ok();
-            // P1 #10 修复: total_spent 累加实际消费总额 (final_amount)，而非仅余额扣减部分
-            conn.execute(
-                "UPDATE members SET total_spent = total_spent + ?1 WHERE id = ?2",
-                params![final_amount, mid],
-            ).ok();
-        }
-    }
-
-    let now_str = now.to_rfc3339();
-    // P0 #1 修复: final_amount 存应收总额 (total - discount)
-    let rows_affected = conn.execute(
-        "UPDATE orders SET end_time = ?1, duration_minutes = ?2, total_amount = ?3, discount_amount = ?4,
-         change_amount = ?5, final_amount = ?6, payment_method = ?7, deposit_change = ?8, status = '已结账' WHERE id = ?9 AND status = '进行中'",
-        params![
-            now_str,
-            duration,
-            total,
-            discount,
-            change_amount,
-            final_amount,
-            payment_method,
-            deposit_change,
-            order_id
-        ],
-    ).map_err(|e| e.to_string())?;
-
-    if rows_affected == 0 {
-        return Err("订单已被其他操作处理，请刷新后重试".to_string());
-    }
-
-    conn.execute(
-        "UPDATE tables SET status = '空闲' WHERE id = ?1",
-        params![table_id],
-    ).map_err(|e| e.to_string())?;
-
-    // P0 #1 + P1 #11 修复: revenues 记录应收总额 (final_amount)，净额由 paid_amount 表示
-    if paid_amount > 0.0 {
-        let today = today_local();
-        if let Err(e) = conn.execute(
-            "INSERT INTO revenues (type, amount, payment_method, table_id, order_id, member_id, date) VALUES ('order', ?1, ?2, ?3, ?4, ?5, ?6)",
-            params![paid_amount, payment_method, table_id, order_id, member_id, today],
-        ) {
-            warn!("Failed to record revenue: {}", e);
-        }
-    }
-
-    get_order_by_id_locked(conn, order_id)
 }
 
 fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTableRequest, member_day_discount: i32, billing_params: &BillingParams) -> Result<Order, String> {
@@ -864,7 +724,7 @@ pub fn auto_close_expired(order_ids: Vec<i64>) -> Vec<Result<Order, String>> {
     
     let results: Vec<Result<Order, String>> = order_ids.iter().map(|id| {
         let req = CloseTableRequest { payment_method: Some("auto".to_string()), discount_amount: None };
-        close_order_with_conn(&tx, *id, req, member_day_discount, &billing_params)
+        close_order_with_tx(&tx, *id, req, member_day_discount, &billing_params)
     }).collect();
     
     if results.iter().all(|r| r.is_ok()) {

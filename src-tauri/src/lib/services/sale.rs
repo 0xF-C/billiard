@@ -1,6 +1,6 @@
 use crate::lib::db::DB;
 use crate::lib::models::*;
-use crate::lib::utils::{round_to_two, validate_positive_id, validate_quantity};
+use crate::lib::utils::{round_to_two, validate_positive_id, validate_quantity, today_local};
 use chrono::Duration;
 use rusqlite::params;
 
@@ -70,6 +70,14 @@ pub fn sale_product(req: SaleRequest) -> Result<Sale, String> {
     
     conn.execute("INSERT INTO sales (inventory_id, product_name, quantity, unit_price, total_amount, table_id, member_id, payment_method, remark, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", params![req.product_id, &name, req.quantity, unit_price, total, req.table_id, req.member_id, &pm, req.remark, now]).map_err(|e| e.to_string())?;
     let id = conn.last_insert_rowid();
+    
+    // P3 #23 修复: 商品销售记录到 revenues 表
+    let today = today_local();
+    conn.execute(
+        "INSERT INTO revenues (type, amount, payment_method, table_id, member_id, date) VALUES ('sale', ?1, ?2, ?3, ?4, ?5)",
+        params![total, &pm, req.table_id, req.member_id, today],
+    ).ok();
+    
     Ok(Sale { id, product_name: name, quantity: req.quantity, unit_price, total_amount: total, table_id: req.table_id, table_name, member_id: req.member_id, member_name, payment_method: pm, remark: req.remark, created_at: now })
 }
 
@@ -119,8 +127,10 @@ pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
 
     // Phase 2: Deduct stock with transaction rollback on failure
     let mut sales = Vec::new();
+    let mut total_sale_amount = 0.0;
     for (pid, qty, name, unit_price, source) in &validated_items {
         let total = round_to_two(*unit_price * *qty as f64);
+        total_sale_amount += total;
         
         let rows = if source == "inventory" {
             tx.execute(
@@ -151,6 +161,15 @@ pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
             member_id: req.member_id, member_name: member_name.clone(),
             payment_method: pm.clone(), remark: req.remark.clone(), created_at: now.clone(),
         });
+    }
+    
+    // P3 #23 修复: 商品销售记录到 revenues 表（批量销售汇总）
+    if total_sale_amount > 0.0 {
+        let today = today_local();
+        tx.execute(
+            "INSERT INTO revenues (type, amount, payment_method, table_id, member_id, date) VALUES ('sale', ?1, ?2, ?3, ?4, ?5)",
+            params![total_sale_amount, &pm, req.table_id, req.member_id, today],
+        ).ok();
     }
     
     tx.commit().map_err(|e| e.to_string())?;
