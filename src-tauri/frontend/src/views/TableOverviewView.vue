@@ -572,7 +572,7 @@ const receiptPreview = ref(null)
 const doPrintReceipt = async () => {
   if (!receiptPreview.value) return
   try {
-    await apiPrintReceipt({
+    const res = await apiPrintReceipt({
       receipt_type: 'order',
       shop_name: t('billiardHall'),
       order_no: null,
@@ -587,8 +587,12 @@ const doPrintReceipt = async () => {
       final_amount: receiptPreview.value.final,
       payment_method: receiptPreview.value.payment,
     })
-    ElMessage.success(t('printSuccess'))
-    showReceiptPreview.value = false
+    if (res && res.success) {
+      ElMessage.success(t('printSuccess'))
+      showReceiptPreview.value = false
+    } else {
+      ElMessage.warning(res?.message || t('printFailed'))
+    }
   } catch (e) {
     console.error('Print error:', e)
     ElMessage.error(t('printFailed'))
