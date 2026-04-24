@@ -11,6 +11,8 @@ use encoding_rs::GBK;
 
 #[cfg(windows)]
 use crate::lib::services::printer_bitmap::print_receipt_bitmap;
+#[cfg(windows)]
+use crate::lib::services::settings::load_settings;
 
 pub const ESC: u8 = 0x1B;
 pub const FS: u8 = 0x1C;

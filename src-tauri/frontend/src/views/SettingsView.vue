@@ -5,7 +5,7 @@
     </div>
 
     <div class="settings-section">
-      <h3 class="section-title">{{ t('systemConfig') }}</h3>
+      <h3 class="section-title">{{ t('printSettings') }}</h3>
       <div class="settings-grid">
         <div class="setting-card" @click="$router.push('/table-rate')">
           <div class="setting-icon">
@@ -27,7 +27,17 @@
           </div>
           <el-icon class="arrow"><ArrowRight /></el-icon>
         </div>
-        <div class="setting-card" @click="showUserDlg = true">
+        <div class="setting-card" @click="showPrintTemplateDlg = true">
+          <div class="setting-icon">
+            <el-icon><Document /></el-icon>
+          </div>
+          <div class="setting-body">
+            <span class="setting-name">{{ t('printTemplate') }}</span>
+            <span class="setting-desc">{{ t('printTemplateDesc') }}</span>
+          </div>
+          <el-icon class="arrow"><ArrowRight /></el-icon>
+        </div>
+        <div class="setting-card" @click="$router.push('/permissions')">
           <div class="setting-icon">
             <el-icon><User /></el-icon>
           </div>
@@ -37,7 +47,7 @@
           </div>
           <el-icon class="arrow"><ArrowRight /></el-icon>
         </div>
-        <div class="setting-card" @click="showBackupDlg = true">
+        <div class="setting-card" @click="$router.push('/data-security')">
           <div class="setting-icon">
             <el-icon><DocumentCopy /></el-icon>
           </div>
@@ -270,6 +280,86 @@
         <el-button @click="showBackupDlg=false">{{ t('cancel') }}</el-button>
       </template>
     </el-dialog>
+
+    <!-- Print Template Dialog -->
+    <el-dialog v-model="showPrintTemplateDlg" :title="t('printTemplate')" width="600px" class="settings-dialog" top="5vh" append-to-body>
+      <div class="dialog-content">
+        <div class="setting-group">
+          <div class="group-header">{{ t('autoPrint') }}</div>
+          <div class="group-body">
+            <div class="toggle-row">
+              <span>{{ t('autoPrintOnClose') }}</span>
+              <el-switch v-model="printTemplate.autoPrintOnClose" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('autoPrintOnSale') }}</span>
+              <el-switch v-model="printTemplate.autoPrintOnSale" />
+            </div>
+          </div>
+        </div>
+        <div class="setting-group">
+          <div class="group-header">{{ t('printTemplate') }}</div>
+          <div class="group-body">
+            <div class="toggle-row">
+              <span>{{ t('showShopName') }}</span>
+              <el-switch v-model="printTemplate.showShopName" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showDateTime') }}</span>
+              <el-switch v-model="printTemplate.showDateTime" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showOrderNo') }}</span>
+              <el-switch v-model="printTemplate.showOrderNo" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showTableName') }}</span>
+              <el-switch v-model="printTemplate.showTableName" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showMemberName') }}</span>
+              <el-switch v-model="printTemplate.showMemberName" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showStartTime') }}</span>
+              <el-switch v-model="printTemplate.showStartTime" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showEndTime') }}</span>
+              <el-switch v-model="printTemplate.showEndTime" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showDuration') }}</span>
+              <el-switch v-model="printTemplate.showDuration" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showDiscount') }}</span>
+              <el-switch v-model="printTemplate.showDiscount" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showDeposit') }}</span>
+              <el-switch v-model="printTemplate.showDeposit" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showPaymentMethod') }}</span>
+              <el-switch v-model="printTemplate.showPaymentMethod" />
+            </div>
+            <div class="toggle-row">
+              <span>{{ t('showFooter') }}</span>
+              <el-switch v-model="printTemplate.showFooter" />
+            </div>
+            <div class="input-row" v-if="printTemplate.showFooter">
+              <label>{{ t('footerText') }}</label>
+              <el-input v-model="printTemplate.footerText" :placeholder="t('footerText')" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showPrintTemplateDlg=false">{{ t('cancel') }}</el-button>
+        <el-button type="primary" @click="savePrintTemplate">{{ t('save') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -287,6 +377,7 @@ const showUserDlg = ref(false)
 const showBackupDlg = ref(false)
 const showUserForm = ref(false)
 const showPrinterForm = ref(false)
+const showPrintTemplateDlg = ref(false)
 const editUserTarget = ref(null)
 const editPrinterTarget = ref(null)
 const users = ref([])
@@ -308,6 +399,24 @@ const userForm = reactive({
   username: '',
   password: '',
   role: '服务员'
+})
+
+const printTemplate = reactive({
+  autoPrintOnClose: true,
+  autoPrintOnSale: true,
+  showShopName: true,
+  showDateTime: true,
+  showOrderNo: true,
+  showTableName: true,
+  showMemberName: true,
+  showStartTime: true,
+  showEndTime: true,
+  showDuration: true,
+  showDiscount: true,
+  showDeposit: true,
+  showPaymentMethod: true,
+  showFooter: true,
+  footerText: t('thankYou'),
 })
 
 const changeLang = () => {
@@ -348,9 +457,46 @@ const loadSettings = async () => {
       if (res.printer?.dpl) {
         Object.assign(printerForm.dpl, res.printer.dpl)
       }
+      if (res.printTemplate) {
+        Object.assign(printTemplate, res.printTemplate)
+      }
+      if (res.autoPrintOnClose !== undefined) {
+        printTemplate.autoPrintOnClose = res.autoPrintOnClose
+      }
+      if (res.autoPrintOnSale !== undefined) {
+        printTemplate.autoPrintOnSale = res.autoPrintOnSale
+      }
     }
   } catch (e) {
     console.log('Load settings failed')
+  }
+}
+
+const savePrintTemplate = async () => {
+  try {
+    const settings = await getSettings()
+    settings.printTemplate = {
+      showShopName: printTemplate.showShopName,
+      showDateTime: printTemplate.showDateTime,
+      showOrderNo: printTemplate.showOrderNo,
+      showTableName: printTemplate.showTableName,
+      showMemberName: printTemplate.showMemberName,
+      showStartTime: printTemplate.showStartTime,
+      showEndTime: printTemplate.showEndTime,
+      showDuration: printTemplate.showDuration,
+      showDiscount: printTemplate.showDiscount,
+      showDeposit: printTemplate.showDeposit,
+      showPaymentMethod: printTemplate.showPaymentMethod,
+      showFooter: printTemplate.showFooter,
+      footerText: printTemplate.footerText,
+    }
+    settings.autoPrintOnClose = printTemplate.autoPrintOnClose
+    settings.autoPrintOnSale = printTemplate.autoPrintOnSale
+    await saveSettings(settings)
+    ElMessage.success(t('saveSuccess'))
+    showPrintTemplateDlg.value = false
+  } catch (e) {
+    ElMessage.error(t('operationFailed'))
   }
 }
 

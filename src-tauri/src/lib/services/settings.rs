@@ -14,15 +14,51 @@ pub struct Settings {
     pub auto_close: AutoClose,
     #[serde(rename = "autoPrintOnClose", default = "default_true")]
     pub auto_print_on_close: Option<bool>,
+    #[serde(rename = "autoPrintOnSale", default = "default_true")]
+    pub auto_print_on_sale: Option<bool>,
     #[serde(rename = "shopName", default)]
     pub shop_name: Option<String>,
     #[serde(rename = "printFooter", default)]
     pub print_footer: Option<String>,
     #[serde(rename = "billingRules", default)]
     pub billing_rules: BillingRules,
+    #[serde(rename = "printTemplate", default)]
+    pub print_template: PrintTemplate,
 }
 
 fn default_true() -> Option<bool> { Some(true) }
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
+pub struct PrintTemplate {
+    #[serde(rename = "showShopName", default = "default_true_bool")]
+    pub show_shop_name: bool,
+    #[serde(rename = "showDateTime", default = "default_true_bool")]
+    pub show_date_time: bool,
+    #[serde(rename = "showOrderNo", default = "default_true_bool")]
+    pub show_order_no: bool,
+    #[serde(rename = "showTableName", default = "default_true_bool")]
+    pub show_table_name: bool,
+    #[serde(rename = "showMemberName", default = "default_true_bool")]
+    pub show_member_name: bool,
+    #[serde(rename = "showStartTime", default = "default_true_bool")]
+    pub show_start_time: bool,
+    #[serde(rename = "showEndTime", default = "default_true_bool")]
+    pub show_end_time: bool,
+    #[serde(rename = "showDuration", default = "default_true_bool")]
+    pub show_duration: bool,
+    #[serde(rename = "showDiscount", default = "default_true_bool")]
+    pub show_discount: bool,
+    #[serde(rename = "showDeposit", default = "default_true_bool")]
+    pub show_deposit: bool,
+    #[serde(rename = "showPaymentMethod", default = "default_true_bool")]
+    pub show_payment_method: bool,
+    #[serde(rename = "showFooter", default = "default_true_bool")]
+    pub show_footer: bool,
+    #[serde(rename = "footerText", default)]
+    pub footer_text: Option<String>,
+}
+
+fn default_true_bool() -> bool { true }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
 pub struct BillingRules {
@@ -36,7 +72,6 @@ pub struct BillingRules {
 
 fn default_free_minutes() -> i32 { 5 }
 fn default_billing_interval() -> i32 { 30 }
-fn default_true_bool() -> bool { true }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct AutoClose {
@@ -119,9 +154,11 @@ fn default_settings() -> Settings {
         member_day: MemberDay { enabled: false, dates: "".to_string(), discount: 0 },
         auto_close: AutoClose::default(),
         auto_print_on_close: Some(true),
+        auto_print_on_sale: Some(true),
         shop_name: Some("台球厅".to_string()),
         print_footer: Some("欢迎下次光临".to_string()),
         billing_rules: BillingRules::default(),
+        print_template: PrintTemplate::default(),
     }
 }
 

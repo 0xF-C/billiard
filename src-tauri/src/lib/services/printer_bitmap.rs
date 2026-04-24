@@ -1,6 +1,8 @@
 #[cfg(windows)]
 use crate::lib::models::PrintReceiptRequest;
 #[cfg(windows)]
+use crate::lib::services::settings::load_settings;
+#[cfg(windows)]
 use ab_glyph::{FontRef, PxScale};
 #[cfg(windows)]
 use image::{GrayImage, Luma};
@@ -65,85 +67,115 @@ fn text_pixel_width(text: &str, font_size: f32) -> u32 {
 
 #[cfg(windows)]
 fn render_receipt_bitmap(req: &PrintReceiptRequest) -> Result<GrayImage, String> {
+    let settings = load_settings();
+    let tmpl = &settings.print_template;
+    let footer_text = tmpl.footer_text.as_ref().cloned().unwrap_or_else(|| "欢迎下次光临".to_string());
+
     let width = BITMAP_WIDTH;
     let font_size = 22.0;
-    let scale = PxScale::from(font_size);
     let line_height = 34u32;
     let margin = 10u32;
-    
+
     let font = get_font()?;
     info!("Got font, ready to render bitmap");
-    
+
     struct Line {
         text: String,
         x: u32,
         is_divider: bool,
         align_center: bool,
     }
-    
+
     let mut lines: Vec<Line> = Vec::new();
-    
-    lines.push(Line { text: req.shop_name.clone(), x: 0, is_divider: false, align_center: true });
-    let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    lines.push(Line { text: now, x: 0, is_divider: false, align_center: true });
-    lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
-    
-    if let Some(ref v) = req.order_no {
-        lines.push(Line { text: format!("订单号: {}", v), x: margin, is_divider: false, align_center: false });
+
+    if tmpl.show_shop_name {
+        lines.push(Line { text: req.shop_name.clone(), x: 0, is_divider: false, align_center: true });
     }
-    if let Some(ref v) = req.table_name {
-        lines.push(Line { text: format!("球桌: {}", v), x: margin, is_divider: false, align_center: false });
+    if tmpl.show_date_time {
+        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        lines.push(Line { text: now, x: 0, is_divider: false, align_center: true });
     }
-    if let Some(ref v) = req.member_name {
-        lines.push(Line { text: format!("会员: {}", v), x: margin, is_divider: false, align_center: false });
+    if tmpl.show_shop_name || tmpl.show_date_time {
+        lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
     }
-    if let Some(ref v) = req.start_time {
-        lines.push(Line { text: format!("开始时间: {}", v), x: margin, is_divider: false, align_center: false });
+
+    if tmpl.show_order_no {
+        if let Some(ref v) = req.order_no {
+            lines.push(Line { text: format!("订单号: {}", v), x: margin, is_divider: false, align_center: false });
+        }
     }
-    if let Some(ref v) = req.end_time {
-        lines.push(Line { text: format!("结束时间: {}", v), x: margin, is_divider: false, align_center: false });
+    if tmpl.show_table_name {
+        if let Some(ref v) = req.table_name {
+            lines.push(Line { text: format!("球桌: {}", v), x: margin, is_divider: false, align_center: false });
+        }
     }
-    if let Some(v) = req.duration_minutes {
-        lines.push(Line { text: format!("时长: {}分钟", v), x: margin, is_divider: false, align_center: false });
+    if tmpl.show_member_name {
+        if let Some(ref v) = req.member_name {
+            lines.push(Line { text: format!("会员: {}", v), x: margin, is_divider: false, align_center: false });
+        }
     }
-    
-    lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
-    
+    if tmpl.show_start_time {
+        if let Some(ref v) = req.start_time {
+            lines.push(Line { text: format!("开始时间: {}", v), x: margin, is_divider: false, align_center: false });
+        }
+    }
+    if tmpl.show_end_time {
+        if let Some(ref v) = req.end_time {
+            lines.push(Line { text: format!("结束时间: {}", v), x: margin, is_divider: false, align_center: false });
+        }
+    }
+    if tmpl.show_duration {
+        if let Some(v) = req.duration_minutes {
+            lines.push(Line { text: format!("时长: {}分钟", v), x: margin, is_divider: false, align_center: false });
+        }
+    }
+
+    if !lines.is_empty() {
+        lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
+    }
+
     if req.receipt_type == "sale" {
         if let Some(ref items) = req.items {
             for item in items {
-                lines.push(Line { 
+                lines.push(Line {
                     text: format!("{} x{}  ¥{:.2}", item.name, item.quantity, item.price),
-                    x: margin, is_divider: false, align_center: false 
+                    x: margin, is_divider: false, align_center: false
                 });
             }
             lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
         }
     }
-    
+
     lines.push(Line { text: format!("合计: ¥{:.2}", req.total_amount), x: margin, is_divider: false, align_center: false });
-    
-    if let Some(discount) = req.discount_amount {
-        if discount > 0.0 {
-            lines.push(Line { text: format!("优惠: -¥{:.2}", discount), x: margin, is_divider: false, align_center: false });
+
+    if tmpl.show_discount {
+        if let Some(discount) = req.discount_amount {
+            if discount > 0.0 {
+                lines.push(Line { text: format!("优惠: -¥{:.2}", discount), x: margin, is_divider: false, align_center: false });
+            }
         }
     }
-    if let Some(deposit) = req.deposit {
-        if deposit > 0.0 {
-            lines.push(Line { text: format!("押金: -¥{:.2}", deposit), x: margin, is_divider: false, align_center: false });
+    if tmpl.show_deposit {
+        if let Some(deposit) = req.deposit {
+            if deposit > 0.0 {
+                lines.push(Line { text: format!("押金: -¥{:.2}", deposit), x: margin, is_divider: false, align_center: false });
+            }
         }
     }
-    
+
     lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
     lines.push(Line { text: format!("实收: ¥{:.2}", req.final_amount), x: margin, is_divider: false, align_center: false });
-    
-    if let Some(ref method) = req.payment_method {
-        lines.push(Line { text: format!("支付方式: {}", method), x: margin, is_divider: false, align_center: false });
+
+    if tmpl.show_payment_method {
+        if let Some(ref method) = req.payment_method {
+            lines.push(Line { text: format!("支付方式: {}", method), x: margin, is_divider: false, align_center: false });
+        }
     }
-    
-    lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
-    lines.push(Line { text: "感谢您的光临！".to_string(), x: 0, is_divider: false, align_center: true });
-    lines.push(Line { text: "欢迎下次再来".to_string(), x: 0, is_divider: false, align_center: true });
+
+    if tmpl.show_footer {
+        lines.push(Line { text: String::new(), x: 0, is_divider: true, align_center: false });
+        lines.push(Line { text: footer_text, x: 0, is_divider: false, align_center: true });
+    }
     
     let height = lines.len() as u32 * line_height + margin * 2;
     let mut img = GrayImage::from_pixel(width, height, Luma([255u8]));
