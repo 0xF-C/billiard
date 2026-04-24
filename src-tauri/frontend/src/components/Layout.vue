@@ -273,6 +273,9 @@ let timer = null
 let dashTimer = null
 
 const toggleGroup = (id) => {
+  if (sidebarCollapsed.value) {
+    sidebarCollapsed.value = false
+  }
   openGroups.value = { ...openGroups.value, [id]: !openGroups.value[id] }
 }
 
@@ -514,7 +517,6 @@ onUnmounted(() => { clearInterval(timer); clearInterval(dashTimer) })
   margin: 2px 0 4px 14px;
   padding-left: 10px;
   border-left: 1px solid var(--border-subtle);
-  overflow: hidden;
 }
 
 .nav-child {
@@ -757,9 +759,8 @@ onUnmounted(() => { clearInterval(timer); clearInterval(dashTimer) })
 .main-content {
   flex: 1;
   padding: 22px 24px;
-  max-width: 1640px;
-  margin: 0 auto;
   width: 100%;
+  min-width: 0;
 }
 
 /* ── Responsive ── */

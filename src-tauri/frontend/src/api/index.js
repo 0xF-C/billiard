@@ -17,6 +17,7 @@ const handleError = (err, context = "") => {
     localStorage.removeItem("token");
     authToken = "";
     window.location.href = "/login";
+    return Promise.reject(err);
   }
   ElMessage.error(err.message || err.toString() || "操作失败");
   return Promise.reject(err);
