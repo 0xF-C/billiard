@@ -157,9 +157,7 @@ pub fn calc_bill_minutes_with_params(duration: i64, params: &BillingParams) -> i
     free + rounded_units * interval
 }
 
-pub fn calc_extra_minutes(extra_mins: i64, hourly_rate: f64) -> f64 {
-    calc_extra_minutes_with_params(extra_mins, hourly_rate, &BillingParams::default_rules())
-}
+// calc_extra_minutes 已合并到 calc_extra_minutes_with_params，无需单独调用
 
 pub fn calc_extra_minutes_with_params(extra_mins: i64, hourly_rate: f64, params: &BillingParams) -> f64 {
     if extra_mins <= 0 {

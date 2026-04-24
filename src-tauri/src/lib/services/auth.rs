@@ -3,6 +3,9 @@ use crate::lib::models::*;
 use crate::lib::utils::{hash_password, verify_password, generate_token, hmac_sign};
 use rusqlite::params;
 
+const TOKEN_EXPIRY_DAYS: i64 = 7;
+const REFRESH_TOKEN_EXPIRY_DAYS: i64 = 30;
+
 pub fn login(username: &str, password: &str) -> LoginResponse {
     let conn = DB.lock();
 
@@ -38,11 +41,19 @@ pub fn login(username: &str, password: &str) -> LoginResponse {
             if password_valid {
                 let token = generate_token();
                 let signed_token = hmac_sign(&token);
-                let expires = chrono::Utc::now() + chrono::Duration::days(7);
+                let refresh_token = generate_token();
+                let signed_refresh_token = hmac_sign(&refresh_token);
+                let expires = chrono::Utc::now() + chrono::Duration::days(TOKEN_EXPIRY_DAYS);
+                let refresh_expires = chrono::Utc::now() + chrono::Duration::days(REFRESH_TOKEN_EXPIRY_DAYS);
                 
                 conn.execute(
                     "INSERT INTO user_tokens (user_id, token, expires_at) VALUES (?1, ?2, ?3)",
                     params![user_id, signed_token, expires.to_rfc3339()],
+                ).ok();
+                
+                conn.execute(
+                    "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?1, ?2, ?3)",
+                    params![user_id, signed_refresh_token, refresh_expires.to_rfc3339()],
                 ).ok();
 
                 LoginResponse {
@@ -184,4 +195,60 @@ pub fn revoke_token(token: &str) {
         "INSERT OR IGNORE INTO revoked_tokens (token) VALUES (?1)",
         params![token],
     ).ok();
+}
+
+pub fn refresh_access_token(refresh_token: &str) -> Result<LoginResponse, String> {
+    let conn = DB.lock();
+    
+    // 检查 refresh_token 是否有效
+    let user_id: Option<i64> = conn.query_row(
+        "SELECT user_id FROM refresh_tokens WHERE token = ?1 AND expires_at > datetime('now')",
+        params![refresh_token],
+        |r| r.get(0),
+    ).ok();
+    
+    let user_id = user_id.ok_or("Refresh token 无效或已过期")?;
+    
+    // 获取用户信息
+    let (username, role, first_login): (String, String, Option<i32>) = conn.query_row(
+        "SELECT username, role, first_login FROM users WHERE id = ?1",
+        params![user_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    ).map_err(|_| "用户不存在")?;
+    
+    // 删除旧的 refresh_token
+    conn.execute("DELETE FROM refresh_tokens WHERE token = ?1", params![refresh_token]).ok();
+    
+    // 生成新的 access_token 和 refresh_token
+    let token = generate_token();
+    let signed_token = hmac_sign(&token);
+    let new_refresh_token = generate_token();
+    let signed_new_refresh_token = hmac_sign(&new_refresh_token);
+    let expires = chrono::Utc::now() + chrono::Duration::days(TOKEN_EXPIRY_DAYS);
+    let refresh_expires = chrono::Utc::now() + chrono::Duration::days(REFRESH_TOKEN_EXPIRY_DAYS);
+    
+    // 更新 user_tokens
+    conn.execute(
+        "INSERT INTO user_tokens (user_id, token, expires_at) VALUES (?1, ?2, ?3)",
+        params![user_id, signed_token, expires.to_rfc3339()],
+    ).ok();
+    
+    // 创建新的 refresh_token
+    conn.execute(
+        "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?1, ?2, ?3)",
+        params![user_id, signed_new_refresh_token, refresh_expires.to_rfc3339()],
+    ).ok();
+    
+    Ok(LoginResponse {
+        success: true,
+        token: Some(signed_token),
+        user: Some(User {
+            id: user_id,
+            username,
+            role,
+            created_at: None,
+            first_login: first_login.unwrap_or(0) == 1,
+        }),
+        message: None,
+    })
 }

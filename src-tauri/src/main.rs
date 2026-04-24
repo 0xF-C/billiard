@@ -3,7 +3,6 @@
 mod lib;
 
 use lib::*;
-use std::collections::HashMap;
 use log::info;
 
 fn require_auth(token: &str) -> Result<(), String> {
@@ -26,6 +25,17 @@ fn cmd_login(username: String, password: String) -> LoginResponse {
 #[tauri::command(rename_all = "camelCase")]
 fn cmd_logout(token: String) {
     revoke_token(&token);
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn cmd_refresh_token(refresh_token: String) -> LoginResponse {
+    // P3 #14 修复: Token 刷新机制
+    refresh_access_token(&refresh_token).unwrap_or_else(|e| LoginResponse {
+        success: false,
+        token: None,
+        user: None,
+        message: Some(e),
+    })
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -243,7 +253,8 @@ fn cmd_get_settings(token: String) -> Settings {
 }
 
 #[tauri::command(rename_all = "camelCase")]
-fn cmd_save_settings(token: String, settings: HashMap<String, serde_json::Value>) -> Result<(), String> {
+fn cmd_save_settings(token: String, settings: Settings) -> Result<(), String> {
+    // P3 #24 修复: 使用 Settings 结构体类型
     require_auth(&token)?;
     save_settings(settings)
 }
@@ -793,6 +804,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             cmd_login,
             cmd_logout,
+            cmd_refresh_token,
             cmd_change_password,
             cmd_setup_first_login,
             cmd_get_tables,

@@ -1,6 +1,5 @@
 use crate::lib::db::DB;
 use rusqlite::params;
-use std::collections::HashMap;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
 pub struct Settings {
@@ -168,8 +167,10 @@ pub fn get_settings() -> Settings {
     Settings::default()
 }
 
-pub fn save_settings(settings: HashMap<String, serde_json::Value>) -> Result<(), String> {
+pub fn save_settings(settings: Settings) -> Result<(), String> {
     let conn = DB.lock();
+    // P3 #24 修复: 接收完整的 Settings 结构体，而不是 HashMap
+    // 前端必须传完整的设置对象，避免部分更新导致数据丢失
     let json = serde_json::to_string(&settings).map_err(|e| e.to_string())?;
     let existing: Option<i64> = conn.query_row("SELECT id FROM settings WHERE key = 'system_settings'", [], |r| r.get(0)).ok();
     if existing.is_some() {

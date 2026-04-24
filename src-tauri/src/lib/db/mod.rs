@@ -285,7 +285,7 @@ pub fn init_database() -> SqliteResult<Connection> {
     Ok(conn)
 }
 
-const CURRENT_SCHEMA_VERSION: i32 = 6;
+const CURRENT_SCHEMA_VERSION: i32 = 7;
 
 fn get_current_version(conn: &Connection) -> SqliteResult<i32> {
     let count: i32 = conn.query_row("SELECT COUNT(*) FROM schema_version", [], |r| r.get(0))?;
@@ -537,6 +537,23 @@ fn run_migrations(conn: &Connection) -> SqliteResult<()> {
         conn.execute("ALTER TABLE orders ADD COLUMN deposit_payment_method TEXT", []).ok();
         
         conn.execute("INSERT INTO schema_version (version) VALUES (6)", []).ok();
+    }
+
+    if current_version < 7 {
+        info!("Running migration v7: add refresh_tokens table");
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS refresh_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                token TEXT UNIQUE NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )",
+            [],
+        ).ok();
+        
+        conn.execute("INSERT INTO schema_version (version) VALUES (7)", []).ok();
     }
 
     if current_version < CURRENT_SCHEMA_VERSION {
