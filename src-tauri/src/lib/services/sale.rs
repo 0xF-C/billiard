@@ -1,7 +1,6 @@
 use crate::lib::db::DB;
 use crate::lib::models::*;
 use crate::lib::utils::{round_to_two, validate_positive_id, validate_quantity, today_local};
-use crate::lib::services::printer::print_receipt;
 use chrono::Duration;
 use rusqlite::params;
 
@@ -175,68 +174,5 @@ pub fn sale_batch(req: BatchSaleRequest) -> Result<Vec<Sale>, String> {
     
     tx.commit().map_err(|e| e.to_string())?;
 
-    let _ = auto_print_sale(&sales);
-
     Ok(sales)
-}
-
-fn auto_print_sale(sales: &[Sale]) {
-    use crate::lib::services::settings::load_settings;
-    let settings = load_settings();
-    if !settings.auto_print_on_sale.unwrap_or(true) {
-        log::info!("[SaleAutoPrint] auto_print_on_sale is disabled, skipping");
-        return;
-    }
-
-    log::info!("[SaleAutoPrint] Starting auto print for {} items", sales.len());
-
-    let shop_name = settings.shop_name.unwrap_or_else(|| "台球厅".to_string());
-
-    let items: Vec<ReceiptItem> = sales.iter().map(|s| ReceiptItem {
-        name: s.product_name.clone(),
-        quantity: s.quantity,
-        price: s.unit_price,
-    }).collect();
-
-    let total: f64 = sales.iter().map(|s| s.total_amount).sum();
-
-    let pm_str = match sales.first() {
-        Some(s) => s.payment_method.as_str(),
-        None => "other",
-    };
-    let payment_label = match pm_str {
-        "cash" => "现金",
-        "wechat" => "微信",
-        "alipay" => "支付宝",
-        "member" => "会员余额",
-        _ => pm_str,
-    };
-
-    let _now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-
-    let print_req = PrintReceiptRequest {
-        printer_id: None,
-        shop_name,
-        order_no: sales.first().map(|s| s.id.to_string()),
-        table_name: sales.first().and_then(|s| s.table_name.clone()),
-        member_name: sales.first().and_then(|s| {
-            let name = s.member_name.as_ref()?;
-            if name.is_empty() || name == "散客" { None } else { Some(name.clone()) }
-        }),
-        start_time: None,
-        end_time: None,
-        duration_minutes: None,
-        items: Some(items),
-        total_amount: total,
-        discount_amount: None,
-        deposit: None,
-        final_amount: total,
-        payment_method: Some(payment_label.to_string()),
-        receipt_type: "sale".to_string(),
-    };
-
-    match print_receipt(print_req) {
-        result if result.success => log::info!("Auto-print sale receipt succeeded"),
-        result => log::warn!("Auto-print sale receipt failed: {}", result.message),
-    }
 }
