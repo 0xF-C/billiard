@@ -32,7 +32,6 @@ const routes = [
       { path: 'finance', name: 'Finance', component: () => import('../views/FinanceView.vue') },
       { path: 'orders-pending', name: 'PendingOrders', component: () => import('../views/PendingOrdersView.vue') },
       { path: 'shift-change', name: 'ShiftChange', component: () => import('../views/ShiftChangeView.vue') },
-      { path: 'front-desk', name: 'FrontDesk', component: () => import('../views/FrontDeskView.vue') },
       { path: 'orders', name: 'Orders', component: () => import('../views/OrdersView.vue') },
       { path: 'area-manage', name: 'AreaManage', component: () => import('../views/AreaManageView.vue') },
       { path: 'table-category', name: 'TableCategory', component: () => import('../views/TableCategoryManageView.vue') },
