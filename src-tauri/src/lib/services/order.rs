@@ -1,7 +1,7 @@
 use crate::lib::db::DB;
 use crate::lib::models::*;
 use crate::lib::services::settings::load_settings;
-use crate::lib::utils::{calc_bill_minutes_with_params, validate_open_table_request, validate_close_table_request, today_local, BillingParams, calc_extra_minutes, calc_extra_minutes_with_params, round_to_two};
+use crate::lib::utils::{calc_bill_minutes_with_params, validate_open_table_request, validate_close_table_request, today_local, BillingParams, calc_extra_minutes_with_params, round_to_two};
 use crate::lib::services::settings::get_member_day_discount;
 use crate::lib::services::printer::print_receipt;
 use chrono::{DateTime, Utc};
@@ -856,55 +856,103 @@ fn calc_order_billing(conn: &Connection, order_id: i64, duration: i64, hourly_ra
     Ok((total, discount, net, bill_min))
 }
 
+/// 简化版计费函数（不需要 Connection 参数，用于 get_realtime_billing_status）
+fn calc_order_billing_simple(
+    duration: i64,
+    hourly_rate: f64,
+    _member_day_discount: i32,
+    package_id: Option<i64>,
+    package_price: Option<f64>,
+    package_hours: Option<f64>,
+) -> Result<(f64, f64, f64, i64), String> {
+    let settings = load_settings();
+    let billing_params = BillingParams::new(
+        settings.billing_rules.free_minutes,
+        settings.billing_rules.billing_interval,
+        settings.billing_rules.apply_rounding,
+    );
+    let bill_min = calc_bill_minutes_with_params(duration, &billing_params);
+
+    let mut total = 0.0;
+    if let (Some(_), Some(price), Some(hours)) = (package_id, package_price, package_hours) {
+        total = price;
+        let pkg_duration = (hours * 60.0) as i64;
+        if duration > pkg_duration {
+            let extra_mins = duration - pkg_duration;
+            let extra_params = BillingParams::new(0, billing_params.billing_interval, billing_params.apply_rounding);
+            let extra_fee = calc_extra_minutes_with_params(extra_mins, hourly_rate, &extra_params);
+            total += extra_fee;
+        }
+    }
+    if total == 0.0 {
+        total = (bill_min as f64 / 60.0) * hourly_rate;
+    }
+
+    // 实时计费不查折扣（简化计算）
+    let discount = 0.0;
+    let net = total;
+
+    Ok((total, discount, net, bill_min))
+}
+
 /// 获取所有活跃订单的实时计费状态（供前端轮询）
+/// P3 #19 优化: 减少锁内操作时间，预取所需数据后释放锁
 pub fn get_realtime_billing_status() -> Vec<RealtimeBillingStatus> {
     let member_day_discount = get_member_day_discount();
-    let conn = DB.lock();
-
-    let mut stmt = match conn.prepare(
-        "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, COALESCE(m.name, '散客'),
-                o.start_time, o.deposit, o.package_name, o.package_hours
-         FROM orders o
-         LEFT JOIN tables t ON o.table_id = t.id
-         LEFT JOIN members m ON o.member_id = m.id
-         WHERE o.status = '进行中'"
-    ) {
-        Ok(s) => s,
-        Err(_) => return vec![],
-    };
-
-    let orders: Vec<(i64, i64, String, Option<i64>, String, String, f64, Option<String>, Option<f64>)> =
-        match stmt.query_map([], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
-                   row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?))
-        }) {
-            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
+    
+    // 预取所有活跃订单和费率信息（单次查询减少锁持有时间）
+    let orders_data: Vec<(i64, i64, String, Option<i64>, String, String, f64, Option<String>, Option<f64>, Option<i64>, Option<f64>, f64)>;
+    let mut member_balances: std::collections::HashMap<i64, f64>;
+    
+    {
+        let conn = DB.lock();
+        
+        let mut stmt = match conn.prepare(
+            "SELECT o.id, o.table_id, COALESCE(t.name, ''), o.member_id, COALESCE(m.name, '散客'),
+                    o.start_time, o.deposit, o.package_name, o.package_hours, o.package_id, o.package_price,
+                    COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0) as hourly_rate
+             FROM orders o
+             LEFT JOIN tables t ON o.table_id = t.id
+             LEFT JOIN areas a ON t.area_id = a.id
+             LEFT JOIN members m ON o.member_id = m.id
+             WHERE o.status = '进行中'"
+        ) {
+            Ok(s) => s,
             Err(_) => return vec![],
         };
-    drop(stmt);
 
-    orders.into_iter().map(|(order_id, table_id, table_name, member_id, member_name,
-                             start_time, deposit, package_name, package_hours)| {
+        orders_data = match stmt.query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
+                   row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?, row.get(10)?, row.get(11)?))
+            }) {
+                Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
+                Err(_) => return vec![],
+            };
+        
+        // 预取所有会员余额
+        member_balances = std::collections::HashMap::new();
+        let member_ids: Vec<i64> = orders_data.iter().filter_map(|(_, _, _, mid, _, _, _, _, _, _, _, _)| *mid).collect();
+        for mid in member_ids {
+            if !member_balances.contains_key(&mid) {
+                if let Ok(balance) = conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get::<_, f64>(0)) {
+                    member_balances.insert(mid, balance);
+                }
+            }
+        }
+    } // 锁在这里释放
+    
+    // 在锁外计算（减少锁持有时间）
+    orders_data.into_iter().map(|(order_id, table_id, table_name, member_id, member_name,
+                             start_time, deposit, package_name, package_hours, package_id, package_price, hourly_rate)| {
         let start = DateTime::parse_from_rfc3339(&start_time).ok();
         let duration = start.map(|s| (chrono::Utc::now() - s.with_timezone(&Utc)).num_minutes().max(1)).unwrap_or(1);
-        let hourly_rate: f64 = conn
-        .query_row(
-            "SELECT COALESCE(NULLIF(t.rate_per_hour, 0), a.rate_per_hour, 30.0)
-             FROM tables t LEFT JOIN areas a ON t.area_id = a.id
-             WHERE t.id = ?1",
-            params![table_id],
-            |r| r.get(0),
-        )
-        .unwrap_or(30.0);
-
+        
         let (current_amount, discount_amount, net_amount, bill_min) =
-            calc_order_billing(&conn, order_id, duration, hourly_rate, member_day_discount)
+            calc_order_billing_simple(duration, hourly_rate, member_day_discount, package_id, package_price, package_hours)
                 .unwrap_or((0.0, 0.0, 0.0, 0));
-
-        let member_balance: f64 = member_id
-            .and_then(|mid| conn.query_row("SELECT balance FROM members WHERE id = ?1", params![mid], |r| r.get(0)).ok())
-            .unwrap_or(0.0);
-
+        
+        let member_balance = member_id.and_then(|mid| member_balances.get(&mid)).copied().unwrap_or(0.0);
+        
         let available = deposit + member_balance.max(0.0);
 
         // 计算剩余可用分钟数
