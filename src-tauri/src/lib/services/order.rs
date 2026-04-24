@@ -238,16 +238,16 @@ pub fn open_table(req: OpenTableRequest) -> Result<Order, String> {
 pub fn get_active_orders() -> Vec<Order> {
     let conn = DB.lock();
     let mut stmt = match conn.prepare(
-        "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'), 
+        "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'),
                 o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                 o.total_amount, o.discount_amount, o.deposit, o.deposit_payment_method, o.change_amount, o.final_amount, o.status,
                 o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
                 o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
-                COALESCE(o.deposit_change, 0)
-         FROM orders o 
-         LEFT JOIN tables t ON o.table_id = t.id 
-         LEFT JOIN members m ON o.member_id = m.id 
-         WHERE o.status = '进行中' 
+                COALESCE(o.deposit_change, 0), COALESCE(o.billed_amount, 0), o.last_billed_at
+         FROM orders o
+         LEFT JOIN tables t ON o.table_id = t.id
+         LEFT JOIN members m ON o.member_id = m.id
+         WHERE o.status = '进行中'
          ORDER BY o.start_time"
     ) {
         Ok(s) => s,
@@ -287,6 +287,8 @@ pub fn get_active_orders() -> Vec<Order> {
             refund_method: row.get(25)?,
             payment_method: row.get(26)?,
             deposit_change: row.get(27)?,
+            billed_amount: row.get(28)?,
+            last_billed_at: row.get(29)?,
         })
     }) {
         Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
@@ -486,13 +488,14 @@ fn close_order_with_tx(tx: &rusqlite::Transaction, order_id: i64, req: CloseTabl
 
 pub fn get_orders(status: Option<String>) -> Vec<Order> {
     let conn = DB.lock();
-    let query = "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'), 
+    let query = "SELECT o.id, o.table_id, t.name, o.member_id, COALESCE(m.name, o.customer_name, '散客'),
                     o.customer_name, o.customer_phone, o.start_time, o.end_time, o.duration_minutes,
                     o.total_amount, o.discount_amount, o.deposit, o.deposit_payment_method, o.change_amount, o.final_amount, o.status,
                     o.package_id, o.package_name, o.package_price, o.package_hours, o.last_deduction_time,
                     o.cancel_time, o.cancel_reason, o.deposit_refunded, o.refund_method, o.payment_method,
-                    COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0)
-             FROM orders o 
+                    COALESCE(o.deposit, 0) - COALESCE(o.final_amount, 0),
+                    COALESCE(o.billed_amount, 0), o.last_billed_at
+             FROM orders o
              LEFT JOIN tables t ON o.table_id = t.id 
              LEFT JOIN members m ON o.member_id = m.id 
              WHERE (?1 IS NULL OR o.status = ?1) ORDER BY o.id DESC";
@@ -534,6 +537,8 @@ pub fn get_orders(status: Option<String>) -> Vec<Order> {
             refund_method: row.get(25)?,
             payment_method: row.get(26)?,
             deposit_change: row.get(27)?,
+            billed_amount: row.get(28)?,
+            last_billed_at: row.get(29)?,
         })
     }) {
         Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
@@ -1017,13 +1022,11 @@ pub fn auto_close_exhausted() -> Vec<AutoCloseResult> {
             Ok(s) => s,
             Err(_) => return vec![],
         };
-        match stmt.query_map([], |row| {
+        stmt.query_map([], |row| {
             Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
                 row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?))
-        }) {
-            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
-            Err(_) => return vec![],
-        }
+        }).map(|iter| iter.filter_map(|r| r.ok()).collect::<Vec<_>>())
+          .unwrap_or_else(|_| vec![])
     };
 
     let mut results = vec![];
@@ -1236,13 +1239,11 @@ pub fn process_billing_ticks() -> Vec<BillingTickResult> {
             Ok(s) => s,
             Err(_) => return vec![],
         };
-        match stmt.query_map([], |row| {
+        stmt.query_map([], |row| {
             Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
                 row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?))
-        }) {
-            Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
-            Err(_) => return vec![],
-        }
+        }).map(|iter| iter.filter_map(|r| r.ok()).collect::<Vec<_>>())
+          .unwrap_or_else(|_| vec![])
     };
 
     let mut results = vec![];
